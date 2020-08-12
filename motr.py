@@ -5,6 +5,7 @@ import pexpect
 import yaml
 from pprint import pprint
 import re
+from re import findall
 import textfsm
 from tabulate import tabulate
 
@@ -63,10 +64,17 @@ with open('rings.yaml') as rings_yaml:
 pprint(current_ring)
 print(current_ring[dev]["ip"])
 
+# Поиск ADMIN DOWN
 with open("templates/int_des_huawei.template", 'r') as templ, open("output") as output:
     int_des_ = textfsm.TextFSM(templ)
     header = int_des_.header
     result = int_des_.ParseText(output.read())
+    if result:
+        for position, elem in enumerate(current_ring):
+            for res_line in result:
+                if bool(findall(elem, res_line[3])):
+                    print("GOT")
+                    print(current_ring[position])
     pprint(result)
     print(tabulate(result, headers=header))
 

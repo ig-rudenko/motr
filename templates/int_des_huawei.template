@@ -1,5 +1,5 @@
 Value INTF (\S+)
-Value PHY ((up|down|\*down)(\(l\)){0,})
+Value PHY ((\*down)(\(l\)){0,})
 Value PROTOCOL ((up|down)(\(l\)|\(s\)|\(e\)|\(d\)|--){0,1})
 Value DESCRIPTION (.+)
 
