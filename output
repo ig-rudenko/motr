@@ -37,7 +37,7 @@ Eth0/0/18                     down    down     HUAWEI, Quidway Series, Ethernet0
                                                /0/18 Interface        
 Eth0/0/19                     down    down     HUAWEI, Quidway Series, Ethernet0
                                                /0/19 Interface        
-Eth0/0/20                     down    down     HUAWEI, Quidway Series, Ethernet0
+Eth0/0/20                    *down    down     HUAWEI, Quidway Series, Ethernet0
                                                /0/20 Interface        
 Eth0/0/21                     down    down     HUAWEI, Quidway Series, Ethernet0
                                                /0/21 Interface        
@@ -48,7 +48,7 @@ Eth0/0/23                     down    down     HUAWEI, Quidway Series, Ethernet0
 Eth0/0/24                     down    down     HUAWEI, Quidway Series, Ethernet0
                                                /0/24 Interface        
 GE0/0/1                       up      up       To_SVSL-01-MotR-ASW1_p26
-GE0/0/2                       *down   down     To_SVSL-01-MotR-ASW3_p25
+GE0/0/2                       down   down     To_SVSL-01-MotR-ASW3_p25
 NULL0                         up      up(s)    HUAWEI, Quidway Series, NULL0 Int
                                                erface                 
 Vlanif1                       down    down     HUAWEI, Quidway Series, Vlanif1 I
