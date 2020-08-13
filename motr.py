@@ -146,6 +146,16 @@ def ring_ping_status(ring):
     return zip(ring_list, status)
 
 
+def give_me_interface_name(interface):
+    interface_number = findall(r"\S(\d+([\/\\]?\d*)*)", interface)
+    if bool(findall('^[Ee]', interface)):
+        return f"Ethernet{interface_number}"
+    elif bool(findall('^[Ff]', interface)):
+        return f"FastEthernet{interface_number}"
+    elif bool(findall('^[Gg]', interface)):
+        return f"GigabitEthernet{interface_number}"
+
+
 # def successor():
 #     if ring_rotate_type()
 
