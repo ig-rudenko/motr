@@ -287,15 +287,11 @@ if __name__ == '__main__':
                         i = -1
                     successor_intf_raw = find_port_by_desc(successor_name, current_ring_list[current_ring_list.index(successor_name)+i])
                     successor_intf = give_me_interface_name(successor_intf_raw)
-                    print(successor_intf_raw)
-                    print(successor_intf)
-                    admin_down_intf = admin_down[2][0]
+
+                    admin_down_intf = give_me_interface_name(admin_down[2][0])
                     if set_port_status(successor_name, successor_intf, "sh"):   # Закрываем порт на "преемнике"
-                        if set_port_status(admin_down[0], admin_down[2][0], "undo sh"): # Разворачиваем кольцо в другую сторону
+                        if set_port_status(admin_down[0], admin_down_intf, "undo sh"): # Разворачиваем кольцо в другую сторону
                             print("Кольцо развернуто!")
     else:                                                   # Если все устройства недоступны по "ping", то...
         print("END of RING!")                                     # ...конец кольца
-
-        # for line in devices_ping:
-        #     print(line[1])
 
