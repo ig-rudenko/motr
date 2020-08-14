@@ -290,8 +290,8 @@ if __name__ == '__main__':
                     print(successor_intf_raw)
                     print(successor_intf)
                     admin_down_intf = admin_down[2][0]
-                    if set_port_status(admin_down[0], admin_down_intf, "sh"):
-                        if set_port_status(successor_name, successor_intf, "undo sh"):
+                    if set_port_status(successor_name, successor_intf, "sh"):   # Закрываем порт на "преемнике"
+                        if set_port_status(admin_down[0], admin_down[2][0], "undo sh"): # Разворачиваем кольцо в другую сторону
                             print("Кольцо развернуто!")
     else:                                                   # Если все устройства недоступны по "ping", то...
         print("END of RING!")                                     # ...конец кольца
