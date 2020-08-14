@@ -8,7 +8,7 @@ test_ring:
     vendor: huawei
     user: motr
     pass: motrpass
-    ip: 10.29.4.148
+    ip: 10.29.4.147
   SVSL-01-MotR-ASW2:
     vendor: huawei
     user: motr
