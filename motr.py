@@ -255,6 +255,11 @@ if __name__ == '__main__':
                 iteration = 1
                 if index_factor:                    # Если кольцо имеет поворот то...
                     while index_factor:                 # До тех пор, пока не найдем "преемника":
+
+                        '''
+                        При листинге выходит за пределы списка!!
+                        '''
+
                         print(f"curr_index: {curr_index} | iteration: {iteration}")
 
                         for line in devices_ping:           # Листаем список
