@@ -187,17 +187,32 @@ def find_port_by_desc(main_name: str, target_name: str):
                 return line[0]    # Интерфейс
 
 
-# def successor():
-#     if ring_rotate_type()
-
-# for elem in current_ring:
-#     if current_ring[elem]["vendor"] == "huawei":
-#         int_des = huawei_telnet_int_des(current_ring[elem]["ip"],
-#                                         current_ring[elem]["user"],
-#                                         current_ring[elem]["pass"])
-#         with open('output', 'a+') as file:
-#             file.write(int_des)
-#             print(int_des)
+def set_port_status(device_name: str, interface_name: str, port_status: str):
+    if current_ring[device_name]["vendor"] == 'huawei':
+        with pexpect.spawn(f"telnet {current_ring[device_name]['ip']}") as telnet:
+            telnet.expect("[Uu]ser")
+            telnet.sendline(current_ring[device_name]["user"])
+            print(f"    login {current_ring[device_name]['ip']}")
+            telnet.expect("[Pp]ass")
+            telnet.sendline(current_ring[device_name]["pass"])
+            print(f"    pass {current_ring[device_name]['ip']}")
+            plvl = telnet.expect(['>', ']'])
+            if plvl == 0:
+                telnet.sendline("sys")
+                print('sys')
+            telnet.sendline(f"interface {interface_name}")
+            print(f"interface {interface_name}")
+            telnet.expect(f'-{interface_name}]')
+            telnet.sendline(port_status)
+            print(port_status)
+            telnet.expect(f'-{interface_name}]')
+            telnet.sendline('quit')
+            telnet.expect(']')
+            telnet.sendline('quit')
+            telnet.expect('>')
+            telnet.sendline('quit')
+            print('quit')
+            return 1
 
 
 if __name__ == '__main__':
@@ -218,6 +233,7 @@ if __name__ == '__main__':
             admin_down = search_admin_down(device_name)         # ...ищем admin down
             print(f"admin_down: {admin_down}")
             if admin_down:                                  # [0] - host name, [1] - side host name, [2] - interface
+                print(admin_down[0], admin_down[1], admin_down[2])
                 occurrence = admin_down[0]                      # ...устанавливаем вхождение
                 print("    Find admin down!\n")
                 rotate = ring_rotate_type(occurrence, str(admin_down[1])[2:-2])         # Тип разворота кольца
@@ -273,6 +289,10 @@ if __name__ == '__main__':
                     successor_intf = give_me_interface_name(successor_intf_raw)
                     print(successor_intf_raw)
                     print(successor_intf)
+                    admin_down_intf = admin_down[2][0]
+                    if set_port_status(admin_down[0], admin_down_intf, "sh"):
+                        if set_port_status(successor_name, successor_intf, "undo sh"):
+                            print("Кольцо развернуто!")
     else:                                                   # Если все устройства недоступны по "ping", то...
         print("END of RING!")                                     # ...конец кольца
 
