@@ -340,7 +340,7 @@ if __name__ == '__main__':
                             ring_to_save = {current_ring_name: {"default_host": admin_down[0],
                                                                 "default_port": admin_down[2][0],
                                                                 "admin_down_host": successor_name,
-                                                                "admin_down_port": successor_name}}
+                                                                "admin_down_port": successor_intf}}
                             with open(f'{os.getcwd()}/rotated_rings.yaml', 'a') as save_ring:
                                 yaml.dump(ring_to_save, save_ring, default_flow_style=False)
                             sys.exit()  # Выход

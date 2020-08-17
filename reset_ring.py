@@ -1,13 +1,14 @@
 import motr
 import yaml
 import sys
+import os
 
 # dev = 'SVSL-01-MotR-ASW1'
 dev = sys.argv[1]
 
 current_ring, current_ring_list, current_ring_name = motr.find_ring_by_device(dev)
 
-with open('rotated_rings.yaml') as rings_yaml:  # Чтение файла
+with open(f'{os.getcwd()}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
     if rings_yaml:
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         for ring in rotated_rings:
@@ -33,9 +34,9 @@ else:   # Когда все узлы сети в кольце доступны, 
                                 rotated_rings[current_ring_name]["admin_down_port"],
                                 "up"):
             del rotated_rings[current_ring_name]    # Удаляем кольцо из списка требуемых к развороту
-            with open('rotated_rings.yaml', 'w') as save_ring:
+            with open(f'{os.getcwd()}/rotated_rings.yaml', 'w') as save_ring:
                 yaml.dump(rotated_rings, save_ring, default_flow_style=False)   # Переписываем файл
-            print("Ring rotated to default state!")
+            print(f"Ring rotated to default state! {rotated_rings[current_ring_name]['default_host']}")
 
         else:   # Если не удалось поднять порт на оборудовании с admin_down, то...
             # ...поднимаем порт, который положили на предыдущем шаге
