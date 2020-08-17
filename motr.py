@@ -68,7 +68,7 @@ def search_admin_down(current_ring: dict, checking_device_name: str):
                                        current_ring[checking_device_name]["user"],
                                        current_ring[checking_device_name]["pass"])
 
-    with open(f"{os.getcwd()}/templates/int_des_admin_down_huawei.template", 'r') as template_file:
+    with open(f"{os.getcwd()}templates/int_des_admin_down_huawei.template", 'r') as template_file:
         int_des_ = textfsm.TextFSM(template_file)
         result = int_des_.ParseText(output)         # Ищем интерфейсы "admin down"
         ad_to_this_host = []                        # имя оборудования к которому ведет порт "admin down"
@@ -120,7 +120,7 @@ def find_ring_by_device(device_name: str):
              3 Имя кольца (str)
     '''
     print("---- def find_ring_by_device ----")
-    with open(f'{os.getcwd()}/rings.yaml') as rings_yaml:      # Чтение файла
+    with open(f'{os.getcwd()}rings.yaml') as rings_yaml:      # Чтение файла
         rings = yaml.safe_load(rings_yaml)      # Перевод из yaml в словарь
         for ring in rings:                      # Перебираем все кольца
             for device in rings[ring]:              # Перебираем оборудование в кольце%
@@ -193,7 +193,7 @@ def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
                                        current_ring[main_name]["user"],
                                        current_ring[main_name]["pass"])
     print(main_name, target_name)
-    with open(f"{os.getcwd()}/templates/int_des_huawei.template", 'r') as template_file:  # Ищем интерфейс по шаблону
+    with open(f"{os.getcwd()}templates/int_des_huawei.template", 'r') as template_file:  # Ищем интерфейс по шаблону
         int_des_ = textfsm.TextFSM(template_file)
         result = int_des_.ParseText(output)
         for line in result:
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     dev = sys.argv[1]
     current_ring, current_ring_list, current_ring_name = find_ring_by_device(dev)
 
-    with open(f'{os.getcwd()}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
+    with open(f'{os.getcwd()}rotated_rings.yaml') as rings_yaml:  # Чтение файла
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         for rring in rotated_rings:
             if current_ring_name == rring:
@@ -340,7 +340,7 @@ if __name__ == '__main__':
                                                                 "default_port": admin_down[2][0],
                                                                 "admin_down_host": successor_name,
                                                                 "admin_down_port": successor_name}}
-                            with open(f'{os.getcwd()}/rotated_rings.yaml', 'a') as save_ring:
+                            with open(f'{os.getcwd()}rotated_rings.yaml', 'a') as save_ring:
                                 yaml.dump(ring_to_save, save_ring, default_flow_style=False)
                             sys.exit()  # Выход
     else:                                                   # Если все устройства недоступны по "ping", то...
