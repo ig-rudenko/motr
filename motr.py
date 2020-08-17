@@ -247,8 +247,8 @@ def set_port_status(current_ring: dict, device_name: str, interface_name: str, p
 if __name__ == '__main__':
 
     successor_name = ''
-    dev = 'SVSL-01-MotR-ASW1'
-
+    # dev = 'SVSL-01-MotR-ASW1'
+    dev = sys.argv[1]
     current_ring, current_ring_list, current_ring_name = find_ring_by_device(dev)
 
     with open('rotated_rings.yaml') as rings_yaml:  # Чтение файла

@@ -2,7 +2,8 @@ import motr
 import yaml
 import sys
 
-dev = 'SVSL-01-MotR-ASW1'
+# dev = 'SVSL-01-MotR-ASW1'
+dev = sys.argv[1]
 
 current_ring, current_ring_list, current_ring_name = motr.find_ring_by_device(dev)
 
