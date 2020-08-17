@@ -10,8 +10,8 @@ import os
 dev = sys.argv[1]
 
 current_ring, current_ring_list, current_ring_name = motr.find_ring_by_device(dev)
-
-with open(f'{os.getcwd()}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
+getcwd = os.getcwd()
+with open(getcwd+'/rotated_rings.yaml') as rings_yaml:  # Чтение файла
     if rings_yaml.read():
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         for ring in rotated_rings:
