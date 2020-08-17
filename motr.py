@@ -8,11 +8,21 @@ from pprint import pprint
 import re
 from re import findall
 import textfsm
+import sys
+import os
 from tabulate import tabulate
 import subprocess
 
 
 def huawei_telnet_int_des(ip: str, login: str, password: str):
+    '''
+    Подключается через telnet к оборудованию производителя Huawei
+    и выдает информацию о портах, их состояние и description
+    :param ip:          IP оборудования
+    :param login:       Логин пользователя telnet
+    :param password:    Пароль пользователя telnet
+    :return:            Строка с информацией о портах, их состояние и description
+    '''
     print("---- def huawei_telnet_int_des ----")
     with pexpect.spawn(f"telnet {ip}") as telnet:
         telnet.expect("[Uu]ser")
@@ -43,11 +53,12 @@ def huawei_telnet_int_des(ip: str, login: str, password: str):
         return output
 
 
-def search_admin_down(checking_device_name: str):
+def search_admin_down(current_ring: dict, checking_device_name: str):
     '''
     Ищет есть ли у данного узла сети порт(ы) в состоянии "admin down" в сторону другого узла сети из этого кольца.
     Проверка осуществляется по наличию в description'е имени узла сети из текущего кольца.
 
+    :param current_ring:         Кольцо
     :param checking_device_name: Имя узла сети
     :return:    В случае успеха возвращает имя оборудования с портом(ми) "admin down" и имя оборудования к которому
                 ведет этот порт и интерфейс. Если нет портов "admin down", то возвращает "False"
@@ -79,12 +90,13 @@ def search_admin_down(checking_device_name: str):
             return False
 
 
-def ring_rotate_type(main_dev: str, neighbour_dev: str):
+def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str):
     '''
     На основе двух узлов сети определяется тип "поворота" кольца относительно его структуры описанной в файле
     "rings.yaml"
         Positive - так как в списке \n
         Negative - обратный порядок \n
+    :param current_ring_list: Кольцо (список)
     :param main_dev:        Узел сети с "admin down"
     :param neighbour_dev:   Узел сети, к которому ведет порт со статусом "admin down" узла сети 'main_dev'
     :return: positive, negative, False
@@ -104,8 +116,9 @@ def find_ring_by_device(device_name: str):
     '''
     Функция для поиска кольца, к которому относится переданный узел сети \n
     :param device_name: Уникальное имя узла сети
-    :return: 1 Кольцо (dic),
+    :return: 1 Кольцо (dict),
              2 Узлы сети в кольце (list)
+             3 Имя кольца (str)
     '''
     print("---- def find_ring_by_device ----")
     with open('rings.yaml') as rings_yaml:      # Чтение файла
@@ -115,23 +128,24 @@ def find_ring_by_device(device_name: str):
                 if device == device_name:               # Если нашли переданный узел сети, то...
                     current_ring = rings[ring]              # ...рассматриваем данное кольцо
                     current_ring_list = []
+                    current_ring_name = ring
                     for i in current_ring:
                         current_ring_list.append(i)
                     break
     pprint(current_ring)
-    print(current_ring[dev]["ip"])
     print(current_ring_list)
-    return current_ring, current_ring_list
+    return current_ring, current_ring_list, str(current_ring_name)
 
 
 def ring_ping_status(ring: dict):
     '''
     Функция определяет, какие из узлов сети в кольце доступны по "ping" \n
-    :param ring: Кольцо как "словарь"
+    :param ring: Кольцо
     :return: Двумерный список: имя узла и его статус "True" - ping успешен, "False" - нет
     '''
     status = []
     print("---- def ring_ping_status ----")
+
     def ping(ip, device):
         result = subprocess.run(['ping', '-c', '3', '-n', ip], stdout=subprocess.DEVNULL)
         if not result.returncode:  # Проверка на доступность: 0 - доступен, 1 и 2 - недоступен
@@ -141,9 +155,9 @@ def ring_ping_status(ring: dict):
             status.append((device, False))
             print(f"dev: {device} ping: False")
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:    # Многопоточность
         for device in ring:
-            executor.submit(ping, ring[device]['ip'], device)
+            executor.submit(ping, ring[device]['ip'], device)   # Запускаем фунцию ping и передаем ей переменные
 
     return status
 
@@ -165,9 +179,10 @@ def give_me_interface_name(interface: str):
         return f"GigabitEthernet{interface_number[0][0]}"
 
 
-def find_port_by_desc(main_name: str, target_name: str):
+def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
     '''
     Поиск интерфейса с description имеющим в себе имя другого оборудования \n
+    :param current_ring: Кольцо
     :param main_name:   Узел сети, где ищем
     :param target_name: Узел сети, который ищем
     :return:            Интерфейс
@@ -187,7 +202,15 @@ def find_port_by_desc(main_name: str, target_name: str):
                 return line[0]    # Интерфейс
 
 
-def set_port_status(device_name: str, interface_name: str, port_status: str):
+def set_port_status(current_ring: dict, device_name: str, interface_name: str, port_status: str):
+    '''
+    Заходим на оборудование через telnet и устанавливаем состояние конкретного порта
+    :param current_ring"    Кольцо
+    :param device_name:     Имя узла сети, с которым необходимо взаимодействовать
+    :param interface_name:  Интерфейс узла сети
+    :param port_status:     "up": поднять порт, "down": положить порт
+    :return:                В случае успеха возвращает 1, неудачи - 0
+    '''
     if current_ring[device_name]["vendor"] == 'huawei':
         with pexpect.spawn(f"telnet {current_ring[device_name]['ip']}") as telnet:
             telnet.expect("[Uu]ser")
@@ -200,11 +223,16 @@ def set_port_status(device_name: str, interface_name: str, port_status: str):
             if plvl == 0:
                 telnet.sendline("sys")
                 print('sys')
+            interface_name = give_me_interface_name(interface_name)
             telnet.sendline(f"interface {interface_name}")
             print(f"interface {interface_name}")
             telnet.expect(f'-{interface_name}]')
-            telnet.sendline(port_status)
-            print(port_status)
+            if port_status == 'down':
+                telnet.sendline('sh')
+                print(port_status)
+            elif port_status == 'up':
+                telnet.sendline('undo sh')
+                print(port_status)
             telnet.expect(f'-{interface_name}]')
             telnet.sendline('quit')
             telnet.expect(']')
@@ -213,6 +241,7 @@ def set_port_status(device_name: str, interface_name: str, port_status: str):
             telnet.sendline('quit')
             print('quit')
             return 1
+    return 0
 
 
 if __name__ == '__main__':
@@ -220,7 +249,15 @@ if __name__ == '__main__':
     successor_name = ''
     dev = 'SVSL-01-MotR-ASW1'
 
-    current_ring, current_ring_list = find_ring_by_device(dev)
+    current_ring, current_ring_list, current_ring_name = find_ring_by_device(dev)
+
+    with open('rotated_rings.yaml') as rings_yaml:  # Чтение файла
+        rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
+        for rring in rotated_rings:
+            if current_ring_name == rring:
+                print(f"Кольцо, к которому принадлежит узел сети {dev} уже находится в списке как развернутое"
+                      f"(смотреть файл \"{os.getcwd()}/rotated_rings.yaml\")")
+                sys.exit()  # Выход
 
     devices_ping = ring_ping_status(current_ring)
     print(f"devices_ping: {devices_ping}")
@@ -230,13 +267,13 @@ if __name__ == '__main__':
 
         print(f"device_name: {device_name} | device_status: {device_status}")
         if device_status:                                   # Если нашли доступное устройство, то...
-            admin_down = search_admin_down(device_name)         # ...ищем admin down
+            admin_down = search_admin_down(current_ring, device_name)         # ...ищем admin down
             print(f"admin_down: {admin_down}")
             if admin_down:                                  # [0] - host name, [1] - side host name, [2] - interface
                 print(admin_down[0], admin_down[1], admin_down[2])
                 occurrence = admin_down[0]                      # ...устанавливаем вхождение
                 print("    Find admin down!\n")
-                rotate = ring_rotate_type(occurrence, str(admin_down[1])[2:-2])         # Тип разворота кольца
+                rotate = ring_rotate_type(current_ring_list, occurrence, str(admin_down[1])[2:-2])  # Тип разворота кольца
                 print(f'ring rotate type: {rotate}')
 
                 if rotate == 'positive':
@@ -245,10 +282,12 @@ if __name__ == '__main__':
                     index_factor = 1
                 else:
                     index_factor = 0
+
                 print("________________")
                 for line in devices_ping:
                     print(line)
                 print("________________")
+
                 # Начальный индекс равен индексу соседнего узла по отношению к узлу сети, где
                 # установлен принудительный обрыв кольца (admin down) в обратную сторону от разворота кольца
                 curr_index = current_ring_list.index(admin_down[0])+index_factor
@@ -290,13 +329,21 @@ if __name__ == '__main__':
                         i = 1
                     else:
                         i = -1
-                    successor_intf_raw = find_port_by_desc(successor_name, current_ring_list[current_ring_list.index(successor_name)+i])
-                    successor_intf = give_me_interface_name(successor_intf_raw)
 
-                    admin_down_intf = give_me_interface_name(admin_down[2][0])
-                    if set_port_status(successor_name, successor_intf, "sh"):   # Закрываем порт на "преемнике"
-                        if set_port_status(admin_down[0], admin_down_intf, "undo sh"): # Разворачиваем кольцо в другую сторону
+                    successor_intf = find_port_by_desc(current_ring, successor_name,
+                                                       current_ring_list[current_ring_list.index(successor_name)+i])
+
+                    if set_port_status(current_ring, successor_name, successor_intf, "down"):   # Закрываем порт на "преемнике"
+                        if set_port_status(current_ring, admin_down[0], admin_down[2][0], "up"):
+                            # Разворачиваем кольцо в другую сторону
                             print("Кольцо развернуто!")
+                            ring_to_save = {current_ring_name: {"default_host": admin_down[0],
+                                                                "default_port": admin_down[2][0],
+                                                                "admin_down_host": successor_name,
+                                                                "admin_down_port": successor_name}}
+                            with open('rotated_rings.yaml', 'a') as save_ring:
+                                yaml.dump(ring_to_save, save_ring, default_flow_style=False)
+                            sys.exit()  # Выход
     else:                                                   # Если все устройства недоступны по "ping", то...
         print("END of RING!")                                     # ...конец кольца
 
