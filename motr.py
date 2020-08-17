@@ -10,7 +10,6 @@ from re import findall
 import textfsm
 import sys
 import os
-from tabulate import tabulate
 import subprocess
 
 
