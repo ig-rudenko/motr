@@ -251,8 +251,8 @@ if __name__ == '__main__':
     current_ring, current_ring_list, current_ring_name = find_ring_by_device(dev)
 
     with open(f'{os.getcwd()}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
-        if rings_yaml:
-            rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
+        rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
+        if rotated_rings:
             for rring in rotated_rings:
                 if current_ring_name == rring:
                     print(f"Кольцо, к которому принадлежит узел сети {dev} уже находится в списке как развернутое"
