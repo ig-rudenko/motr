@@ -269,7 +269,14 @@ if __name__ == '__main__':
                     sys.exit()  # Выход
 
     devices_ping = ring_ping_status(current_ring)
-    # print(f"devices_ping: {devices_ping}")
+
+    for _, available in devices_ping:
+        if not available:
+            break
+    else:
+        print("Все устройства в кольце доступны, разворот не требуется!")
+        sys.exit()
+
     for device_name, device_status in devices_ping:     # Листаем узлы сети и их доступность по "ping"
 
         print('-'*60+'\n'+'-'*60)
@@ -278,7 +285,7 @@ if __name__ == '__main__':
         if device_status:                                   # Если нашли доступное устройство, то...
             admin_down = search_admin_down(current_ring, device_name)         # ...ищем admin down
             if admin_down:                                  # [0] - host name, [1] - side host name, [2] - interface
-                print(f"Найден узел сети {admin_down[0]} со статусом порта {admin_down[2][0]}: admin down"
+                print(f"Найден узел сети {admin_down[0]} со статусом порта {admin_down[2][0]}: admin down\n"
                       f"Данный порт ведет к {admin_down[1][0]}")
                 occurrence = admin_down[0]                      # ...устанавливаем вхождение
                 rotate = ring_rotate_type(current_ring_list, occurrence, str(admin_down[1])[2:-2])  # Тип разворота кольца
@@ -339,10 +346,12 @@ if __name__ == '__main__':
                     successor_intf = find_port_by_desc(current_ring, successor_name,
                                                        current_ring_list[current_ring_list.index(successor_name)+i])
 
+                    print(f'Закрываем порт {successor_intf} на {successor_name}')
                     if set_port_status(current_ring, successor_name, successor_intf, "down"):   # Закрываем порт на "преемнике"
-                        print(f'Закрываем порт {successor_intf} на {successor_name}')
+
+                        print(f'Поднимаем порт {admin_down[2][0]} на {admin_down[0]}')
                         if set_port_status(current_ring, admin_down[0], admin_down[2][0], "up"):
-                            print(f'Поднимаем порт {admin_down[2][0]} на {admin_down[0]}')
+
                             # Разворачиваем кольцо в другую сторону
                             print("Кольцо развернуто!")
                             ring_to_save = {current_ring_name: {"default_host": admin_down[0],
