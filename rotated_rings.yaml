@@ -1,2 +1,6 @@
-elem1:
-elem2:
+null: don't delete
+test_ring:
+  admin_down_host: SVSL-01-MotR-ASW2
+  admin_down_port: GE0/0/1
+  default_host: SVSL-01-MotR-SSW1
+  default_port: GE0/0/2

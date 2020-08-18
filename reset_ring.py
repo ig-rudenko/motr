@@ -4,13 +4,27 @@
 import motr
 import yaml
 import sys
+import os
+from datetime import datetime
 
-dev = 'SVSL-01-MotR-ASW1'
-# dev = sys.argv[1]
+root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
-current_ring, current_ring_list, current_ring_name = motr.find_ring_by_device(dev)
-with open('/home/irudenko/motr/rotated_rings.yaml') as rings_yaml:  # Чтение файла
-    if rings_yaml.read():
+if __name__ == '__main__':
+
+    if len(sys.argv) == 1:
+        print("Не указано имя узла сети!")
+        sys.exit()
+    dev = sys.argv[1]
+    current_ring, current_ring_list, current_ring_name = motr.find_ring_by_device(dev)
+
+    # Заголовок
+    print('\n')
+    print('-' * 20 + 'NEW SESSION' + '-' * 20)
+    print(' ' * 12 + str(datetime.now()))
+    print(' ' * ((51 - len(dev)) // 2) + dev + ' ' * ((51 - len(dev)) // 2))
+    print('-' * 51)
+
+    with open(f'{root_dir}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         for ring in rotated_rings:
             if current_ring_name == ring:           # Найдено
@@ -20,31 +34,33 @@ with open('/home/irudenko/motr/rotated_rings.yaml') as rings_yaml:  # Чтени
             print('Кольцо не находится в списке колец требуемых к развороту "по умолчанию"')
             sys.exit()      # Выход
 
-devices_ping = motr.ring_ping_status(current_ring)
+    devices_ping = motr.ring_ping_status(current_ring)
 
-for device_name, device_status in devices_ping:
-    if not device_status:
-        print("Не все узлы сети в кольце восстановлены, дальнейший разворот прерван!")
-        break
-else:   # Когда все узлы сети в кольце доступны, то...
-    print("ALL DEVICES AVAILABLE!")
-    if motr.set_port_status(current_ring, rotated_rings[current_ring_name]["default_host"],
-                            rotated_rings[current_ring_name]["default_port"],
-                            "down"):
-        if motr.set_port_status(current_ring, rotated_rings[current_ring_name]["admin_down_host"],
-                                rotated_rings[current_ring_name]["admin_down_port"],
-                                "up"):
-            print(f"Кольцо развернуто!\n"
-                  f"На узле сети {rotated_rings[current_ring_name]['default_host']} порт"
-                  f"{rotated_rings[current_ring_name]['default_port']} статус admin down")
-            del rotated_rings[current_ring_name]    # Удаляем кольцо из списка требуемых к развороту
-            with open('/home/irudenko/motr/rotated_rings.yaml', 'w') as save_ring:
-                yaml.dump(rotated_rings, save_ring, default_flow_style=False)   # Переписываем файл
+    for device_name, device_status in devices_ping:
+        if not device_status:
+            print("Не все узлы сети в кольце восстановлены, дальнейший разворот прерван!")
+            break
+    else:   # Когда все узлы сети в кольце доступны, то...
+        print("ALL DEVICES AVAILABLE!")
+        if motr.set_port_status(current_ring,
+                                rotated_rings[current_ring_name]["default_host"],
+                                rotated_rings[current_ring_name]["default_port"], "down"):
+            if motr.set_port_status(current_ring,
+                                    rotated_rings[current_ring_name]["admin_down_host"],
+                                    rotated_rings[current_ring_name]["admin_down_port"], "up"):
+                print(f"Кольцо развернуто!\n"
+                      f"На узле сети {rotated_rings[current_ring_name]['default_host']} порт "
+                      f"{rotated_rings[current_ring_name]['default_port']} в статусе admin down")
+                motr.delete_ring_from_deploying_list(current_ring_name) # Удаляем кольцо из списка требуемых к развороту
 
-        else:   # Если не удалось поднять порт на оборудовании с admin_down, то...
-            # ...поднимаем порт, который положили на предыдущем шаге
-            motr.set_port_status(current_ring, rotated_rings[current_ring_name]["default_host"],
-                                 rotated_rings[current_ring_name]["default_port"],
-                                 "up")
-            print(f'Не удалось поднять порт на оборудовании: {rotated_rings[current_ring_name]["admin_down_host"]}!'
-                  f'Разворот кольца остался прежним')
+            else:   # Если не удалось поднять порт на оборудовании с admin_down, то...
+                # ...поднимаем порт, который положили на предыдущем шаге
+                motr.set_port_status(current_ring,
+                                     rotated_rings[current_ring_name]["default_host"],
+                                     rotated_rings[current_ring_name]["default_port"], "up")
+                print(f'Не удалось поднять порт на оборудовании: {rotated_rings[current_ring_name]["admin_down_host"]}!'
+                      f'\nРазворот кольца остался прежним')
+        else:
+            print(f'Не удалось положить порт на оборудовании: {rotated_rings[current_ring_name]["default_host"]}!'
+                  f'\nРазворот кольца остался прежним')
+
