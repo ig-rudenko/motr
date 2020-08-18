@@ -8,6 +8,7 @@ import re
 from re import findall
 import textfsm
 import sys
+import os
 import subprocess
 
 
@@ -71,8 +72,8 @@ def search_admin_down(current_ring: dict, checking_device_name: str):
         output = huawei_telnet_int_des(current_ring[checking_device_name]["ip"],
                                        current_ring[checking_device_name]["user"],
                                        current_ring[checking_device_name]["pass"])
-
-    with open("/home/irudenko/motr/templates/int_des_admin_down_huawei.template", 'r') as template_file:
+    dir = os.getcwd()+"/templates/int_des_admin_down_huawei.template"
+    with open(dir, 'r') as template_file:
         int_des_ = textfsm.TextFSM(template_file)
         result = int_des_.ParseText(output)         # Ищем интерфейсы "admin down"
         ad_to_this_host = []                        # имя оборудования к которому ведет порт "admin down"
@@ -106,7 +107,8 @@ def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str)
     '''
     # print("---- def ring_rotate_type ----")
     main_dev_index = current_ring_list.index(main_dev)
-    # print(f"main_dev: {main_dev} | neighbour_dev: {neighbour_dev}")
+    print(f"main_dev: {main_dev} | neighbour_dev: {neighbour_dev}")
+    print(current_ring_list, current_ring_list[main_dev_index-1], current_ring_list[main_dev_index+1])
     if current_ring_list[main_dev_index-1] == neighbour_dev:
         return "positive"
     elif current_ring_list[main_dev_index+1] == neighbour_dev:
@@ -124,7 +126,8 @@ def find_ring_by_device(device_name: str):
              3 Имя кольца (str)
     '''
     print("---- def find_ring_by_device ----")
-    with open('/home/irudenko/motr/rings.yaml', 'r') as rings_yaml:      # Чтение файла
+    dir = os.getcwd() + '/rings.yaml'
+    with open(dir, 'r') as rings_yaml:      # Чтение файла
         rings = yaml.safe_load(rings_yaml)      # Перевод из yaml в словарь
         for ring in rings:                      # Перебираем все кольца
             for device in rings[ring]:              # Перебираем оборудование в кольце%
@@ -196,7 +199,8 @@ def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
                                        current_ring[main_name]["user"],
                                        current_ring[main_name]["pass"])
     # print(main_name, target_name)
-    with open("/home/irudenko/motr/templates/int_des_huawei.template", 'r') as template_file:  # Ищем интерфейс по шаблону
+    dir = os.getcwd() + "/templates/int_des_huawei.template"
+    with open(dir, 'r') as template_file:  # Ищем интерфейс по шаблону
         int_des_ = textfsm.TextFSM(template_file)
         result = int_des_.ParseText(output)
         for line in result:
@@ -259,7 +263,8 @@ if __name__ == '__main__':
     dev = sys.argv[1]
     current_ring, current_ring_list, current_ring_name = find_ring_by_device(dev)
 
-    with open('/home/irudenko/motr/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
+    dir = os.getcwd() + '/rotated_rings.yaml'
+    with open(dir, 'r') as rings_yaml:  # Чтение файла
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         if rotated_rings:
             for rring in rotated_rings:
@@ -277,6 +282,13 @@ if __name__ == '__main__':
         print("Все устройства в кольце доступны, разворот не требуется!")
         sys.exit()
 
+    for _, available in devices_ping:
+        if available:
+            break
+    else:
+        print("Все устройства в кольце недоступны, разворот невозможен!")
+        sys.exit()
+
     for device_name, device_status in devices_ping:     # Листаем узлы сети и их доступность по "ping"
 
         print('-'*60+'\n'+'-'*60)
@@ -284,11 +296,10 @@ if __name__ == '__main__':
         print(f"device_name: {device_name} | device_status: {device_status}")
         if device_status:                                   # Если нашли доступное устройство, то...
             admin_down = search_admin_down(current_ring, device_name)         # ...ищем admin down
-            if admin_down:                                  # [0] - host name, [1] - side host name, [2] - interface
+            if admin_down:                                  # 0 - host name, [1] - side host name, [2] - interface
                 print(f"Найден узел сети {admin_down[0]} со статусом порта {admin_down[2][0]}: admin down\n"
                       f"Данный порт ведет к {admin_down[1][0]}")
-                occurrence = admin_down[0]                      # ...устанавливаем вхождение
-                rotate = ring_rotate_type(current_ring_list, occurrence, str(admin_down[1])[2:-2])  # Тип разворота кольца
+                rotate = ring_rotate_type(current_ring_list, admin_down[0], admin_down[1][0])  # Тип разворота кольца
                 print(f'Разворот кольца: {rotate}')
                 if rotate == 'positive':
                     index_factor = -1
@@ -358,6 +369,7 @@ if __name__ == '__main__':
                                                                 "default_port": admin_down[2][0],
                                                                 "admin_down_host": successor_name,
                                                                 "admin_down_port": successor_intf}}
+                            dir = os.getcwd() + '/rotated_rings.yaml'
                             with open('/home/irudenko/motr/rotated_rings.yaml', 'a') as save_ring:
                                 yaml.dump(ring_to_save, save_ring, default_flow_style=False)
                 break

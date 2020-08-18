@@ -1,14 +1,14 @@
 test_ring:
-  GP15-Tech623in-ASW2:
-    vendor: huawei
-    user: motr
-    pass: motrpass
-    ip: 10.29.4.32
   SVSL-01-MotR-SSW1:
     vendor: huawei
     user: motr
     pass: motrpass
     ip: 10.29.4.203
+  GP15-Tech623in-ASW2:
+    vendor: huawei
+    user: motr
+    pass: motrpass
+    ip: 10.29.4.32
   SVSL-01-MotR-ASW1:
     vendor: huawei
     user: motr
