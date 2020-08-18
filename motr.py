@@ -36,8 +36,14 @@ def huawei_telnet_int_des(ip: str, login: str, password: str):
             page = str(telnet.before.decode('utf-8')).replace("[42D", '')
             # page = re.sub(" +\x08+ +\x08+", "\n", page)
             output += page.strip()
-            if match < 2:
+            if match == 0:
                 print("    got int des")
+                telnet.sendline("quit")
+                break
+            elif match == 1:
+                print("    got int des")
+                telnet.sendline("quit")
+                telnet.sendline("quit")
                 break
             elif match == 2:
                 telnet.send(" ")
@@ -45,8 +51,6 @@ def huawei_telnet_int_des(ip: str, login: str, password: str):
             else:
                 print("    Ошибка: timeout")
                 break
-        if telnet.expect(['>', ']']) == 1:
-            telnet.sendline("quit")
         telnet.sendline("quit")
         output = re.sub("\n +\n", "\n", output)
         return output
@@ -236,6 +240,11 @@ def set_port_status(current_ring: dict, device_name: str, interface_name: str, p
             telnet.sendline('quit')
             telnet.expect(']')
             telnet.sendline('quit')
+            telnet.expect('>')
+            telnet.sendline('save')
+            telnet.expect(']')
+            print('    configuration saved!')
+            telnet.sendline('Y')
             telnet.expect('>')
             telnet.sendline('quit')
             print('    QUIT\n')
