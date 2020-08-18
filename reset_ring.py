@@ -41,10 +41,15 @@ if __name__ == '__main__':
             print("Не все узлы сети в кольце восстановлены, дальнейший разворот прерван!")
             break
     else:   # Когда все узлы сети в кольце доступны, то...
-        print("ALL DEVICES AVAILABLE!")
+        print("ALL DEVICES AVAILABLE!\n")
+        print(f'Закрываем порт {rotated_rings[current_ring_name]["default_port"]} '
+              f'на {rotated_rings[current_ring_name]["default_host"]}')
         if motr.set_port_status(current_ring,
                                 rotated_rings[current_ring_name]["default_host"],
                                 rotated_rings[current_ring_name]["default_port"], "down"):
+
+            print(f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_host"]} '
+                  f'на {rotated_rings[current_ring_name]["admin_down_port"]}')
             if motr.set_port_status(current_ring,
                                     rotated_rings[current_ring_name]["admin_down_host"],
                                     rotated_rings[current_ring_name]["admin_down_port"], "up"):
@@ -61,6 +66,6 @@ if __name__ == '__main__':
                 print(f'Не удалось поднять порт на оборудовании: {rotated_rings[current_ring_name]["admin_down_host"]}!'
                       f'\nРазворот кольца остался прежним')
         else:
-            print(f'Не удалось положить порт на оборудовании: {rotated_rings[current_ring_name]["default_host"]}!'
+            print(f'Не удалось закрыть порт на оборудовании: {rotated_rings[current_ring_name]["default_host"]}!'
                   f'\nРазворот кольца остался прежним')
 
