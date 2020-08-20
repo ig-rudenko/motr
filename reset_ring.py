@@ -6,6 +6,7 @@ import yaml
 import sys
 import os
 from datetime import datetime
+import email_notifications
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
@@ -27,7 +28,7 @@ if __name__ == '__main__':
     with open(f'{root_dir}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         for ring in rotated_rings:
-            if current_ring_name == ring and rotated_rings[ring]['priority'] == 1:           # Найдено
+            if current_ring_name == ring and rotated_rings[ring]['priority'] == 2:           # Найдено
                 print("GOT RING: "+ring)
                 break
         else:

@@ -7,7 +7,7 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
          admin_down_host: str, admin_down_port: str, admin_down_to: str, up_host: str, up_port: str,
          up_to: str, info: str):
     '''
-                        Отправка e-mail
+                        Отправка e-mail \n
     :param ring_name:           Имя кольца
     :param current_ring_list:   Кольцо
     :param old_devices_ping:    Состояние узлов сети в кольце до разворота
@@ -55,7 +55,7 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
            f'в сторону узла {admin_down_to}\n'\
            f'2)  На {up_host} порт {up_port} - "up" '\
            f'в сторону узла {up_to}\n'\
-           f'\nСостояние кольца после разворота: \n {status_after} '\
+           f'\nСостояние кольца после разворота: \n {status_after} \n'\
            f'{info}'
 
     message = MIMEText(text, 'plain', 'utf-8')
