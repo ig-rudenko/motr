@@ -11,6 +11,7 @@ import sys
 import os
 import subprocess
 from datetime import datetime
+import time
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
@@ -26,38 +27,45 @@ def huawei_telnet_int_des(ip: str, login: str, password: str):
     '''
     print("---- def huawei_telnet_int_des ----")
     with pexpect.spawn(f"telnet {ip}") as telnet:
-        telnet.expect("[Uu]ser")
-        telnet.sendline(login)
-        print(f"    Login {ip}")
-        telnet.expect("[Pp]ass")
-        telnet.sendline(password)
-        print(f"    Pass {ip}")
-        telnet.expect(['>', ']'])
-        telnet.sendline("dis int des")
-        output = ''
-        while True:
-            match = telnet.expect(['>', ']', "---- More ----", pexpect.TIMEOUT])
-            page = str(telnet.before.decode('utf-8')).replace("[42D", '')
-            # page = re.sub(" +\x08+ +\x08+", "\n", page)
-            output += page.strip()
-            if match == 0:
-                print("    got int des")
-                telnet.sendline("quit")
-                break
-            elif match == 1:
-                print("    got int des")
-                telnet.sendline("quit")
-                telnet.sendline("quit")
-                break
-            elif match == 2:
-                telnet.send(" ")
-                output += '\n'
-            else:
-                print("    Ошибка: timeout")
-                break
-        telnet.sendline("quit")
-        output = re.sub("\n +\n", "\n", output)
-        return output
+        try:
+            if telnet.expect(["[Uu]ser", 'Unable to connect']):
+                print("    Telnet недоступен!")
+                return False
+            telnet.sendline(login)
+            print(f"    Login {ip}")
+            telnet.expect("[Pp]ass")
+            telnet.sendline(password)
+            print(f"    Pass {ip}")
+            if telnet.expect(['>', ']', 'Failed to send authen-req']) == 2:
+                print('    Неверный логин или пароль!')
+                return False
+            telnet.sendline("dis int des")
+            output = ''
+            while True:
+                match = telnet.expect(['>', ']', "---- More ----", pexpect.TIMEOUT])
+                page = str(telnet.before.decode('utf-8')).replace("[42D", '')
+                # page = re.sub(" +\x08+ +\x08+", "\n", page)
+                output += page.strip()
+                if match == 0:
+                    print("    got int des")
+                    telnet.sendline("quit")
+                    break
+                elif match == 1:
+                    print("    got int des")
+                    telnet.sendline("quit")
+                    telnet.sendline("quit")
+                    break
+                elif match == 2:
+                    telnet.send(" ")
+                    output += '\n'
+                else:
+                    print("    Ошибка: timeout")
+                    break
+            telnet.sendline("quit")
+            output = re.sub("\n +\n", "\n", output)
+            return output
+        except pexpect.exceptions.TIMEOUT:
+            print("    Время ожидания превышено! (timeout)")
 
 
 def search_admin_down(current_ring: dict, checking_device_name: str):
@@ -75,9 +83,13 @@ def search_admin_down(current_ring: dict, checking_device_name: str):
         output = huawei_telnet_int_des(current_ring[checking_device_name]["ip"],
                                        current_ring[checking_device_name]["user"],
                                        current_ring[checking_device_name]["pass"])
+        if not output:
+            print(f"Не удалось подключиться к оборудованию {checking_device_name} по telnet!")
+            return False
     with open(f'{root_dir}/templates/int_des_admin_down_huawei.template', 'r') as template_file:
         int_des_ = textfsm.TextFSM(template_file)
         result = int_des_.ParseText(output)         # Ищем интерфейсы "admin down"
+        print(result)
         ad_to_this_host = []                        # имя оборудования к которому ведет порт "admin down"
         ad_interface = []
         if result:                                  # Если найден admin_down, то...
@@ -214,39 +226,48 @@ def set_port_status(current_ring: dict, device_name: str, interface_name: str, p
     print("---- def set_port_status ----")
     if current_ring[device_name]["vendor"] == 'huawei':
         with pexpect.spawn(f"telnet {current_ring[device_name]['ip']}") as telnet:
-            telnet.expect("[Uu]ser")
-            telnet.sendline(current_ring[device_name]["user"])
-            print(f"    Вход под пользователем {current_ring[device_name]['user']}")
-            telnet.expect("[Pp]ass")
-            telnet.sendline(current_ring[device_name]["pass"])
-            print(f"    Ввод пароля ***")
-            plvl = telnet.expect(['>', ']'])
-            if plvl == 0:
-                telnet.sendline("sys")
-                print(f'    <{device_name}>system-view')
-            interface_name = give_me_interface_name(interface_name)
-            telnet.sendline(f"interface {interface_name}")
-            print(f"    [{device_name}]interface {interface_name}")
-            telnet.expect(f'-{interface_name}]')
-            if port_status == 'down':
-                telnet.sendline('sh')
-                print(f'    [{device_name}-{interface_name}]shutdown')
-            elif port_status == 'up':
-                telnet.sendline('undo sh')
-                print(f'    [{device_name}-{interface_name}]undo shutdown')
-            telnet.expect(f'-{interface_name}]')
-            telnet.sendline('quit')
-            telnet.expect(']')
-            telnet.sendline('quit')
-            telnet.expect('>')
-            telnet.sendline('save')
-            telnet.expect(']')
-            telnet.sendline('Y')
-            telnet.expect('>')
-            print('    configuration saved!')
-            telnet.sendline('quit')
-            print('    QUIT\n')
-            return 1
+            try:
+                if telnet.expect(["[Uu]ser", 'Unable to connect']):
+                    print("    Telnet недоступен!")
+                    return False
+                telnet.sendline(current_ring[device_name]["user"])
+                print(f"    Вход под пользователем {current_ring[device_name]['user']}")
+                telnet.expect("[Pp]ass")
+                telnet.sendline(current_ring[device_name]["pass"])
+                print(f"    Ввод пароля ***")
+                match = telnet.expect(['>', ']', 'Failed to send authen-req'])
+                if match == 2:
+                    print('    Неверный логин или пароль!')
+                    return False
+                elif match == 0:
+                    telnet.sendline("sys")
+                    print(f'    <{device_name}>system-view')
+                telnet.expect(']')
+                interface_name = give_me_interface_name(interface_name)
+                telnet.sendline(f"interface {interface_name}")
+                print(f"    [{device_name}]interface {interface_name}")
+                telnet.expect(f'-{interface_name}]')
+                if port_status == 'down':
+                    telnet.sendline('sh')
+                    print(f'    [{device_name}-{interface_name}]shutdown')
+                elif port_status == 'up':
+                    telnet.sendline('undo sh')
+                    print(f'    [{device_name}-{interface_name}]undo shutdown')
+                telnet.expect(f'-{interface_name}]')
+                telnet.sendline('quit')
+                telnet.expect(']')
+                telnet.sendline('quit')
+                telnet.expect('>')
+                telnet.sendline('save')
+                telnet.expect(']')
+                telnet.sendline('Y')
+                telnet.expect('>')
+                print('    configuration saved!')
+                telnet.sendline('quit')
+                print('    QUIT\n')
+                return 1
+            except pexpect.exceptions.TIMEOUT:
+                print("    Время ожидания превышено! (timeout)")
     return 0
 
 
@@ -335,9 +356,6 @@ if __name__ == '__main__':
                 iteration = 1
                 if index_factor:                    # Если кольцо имеет поворот то...
                     while index_factor:                 # До тех пор, пока не найдем "преемника":
-                        '''
-                        При листинге выходит за пределы списка!!
-                        '''
                         for line in devices_ping:           # Листаем список
                             if line[0] == double_current_ring_list[curr_index]:
                                 if not line[1]:                     # Если оборудование недоступно, то...
@@ -366,17 +384,65 @@ if __name__ == '__main__':
                                                        current_ring_list[current_ring_list.index(successor_name)+i])
 
                     print(f'Закрываем порт {successor_intf} на {successor_name}')
-                    if set_port_status(current_ring, successor_name, successor_intf, "down"):   # Закрываем порт на "преемнике"
-
+                    if set_port_status(current_ring,
+                                       successor_name, successor_intf, "down"):   # Закрываем порт на "преемнике"
                         print(f'Поднимаем порт {admin_down[2][0]} на {admin_down[0]}')
                         if set_port_status(current_ring, admin_down[0], admin_down[2][0], "up"):
-
-                            new_ping_status = ring_ping_status(current_ring)
                             print("Кольцо развернуто!")
-                            ring_to_save = {current_ring_name: {"default_host": admin_down[0],
-                                                                "default_port": admin_down[2][0],
-                                                                "admin_down_host": successor_name,
-                                                                "admin_down_port": successor_intf}}
+
+                            time.sleep(60)      # Ожидаем 60с на перестройку кольца
+                            new_ping_status = ring_ping_status(current_ring)    # Пингуем заново все устройства в кольце
+                            for _, available in new_ping_status:
+                                if not available:
+                                    break
+                            else:
+                                print("Все устройства в кольце после разворота доступны!")
+
+                                # Если после разворота все узлы сети доступны, то это может быть обрыв кабеля, либо
+                                #   временное отключение электроэнергии. Разворачиваем кольцо в исходное состояние,
+                                #   чтобы определить какой именно у нас случай
+
+                                print(f'Закрываем порт {admin_down[2][0]} на {admin_down[0]}')
+                                if set_port_status(current_ring, admin_down[0], admin_down[2][0], "down"):
+                                    print(f'Поднимаем порт {successor_intf} на {successor_name}')
+                                    if set_port_status(current_ring, successor_name, successor_intf, "up"):
+
+                                        time.sleep(60)      # Ожидаем 60с на перестройку кольца
+                                        new_ping_status = ring_ping_status(current_ring)
+                                        for _, available in new_ping_status:
+                                            if not available:
+                                                break
+                                        else:
+                                            # Если все узлы доступны, то исключаем обрыв кабеля и оставляем кольцо в
+                                            #   исходном состоянии. Разворот не требуется!
+                                            delete_ring_from_deploying_list(current_ring_name)
+                                            print(f"Все узлы в кольце доступны, разворот не потребовался!\n"
+                                                  f"Узел {admin_down[0]}, состояние порта {admin_down[2][0]}: "
+                                                  f"admin down в сторону узла {admin_down[1][0]}")
+                                            sys.exit()
+
+                                        # Если есть недоступные узлы, то необходимо выполнить проверку кольца
+
+
+                                    else:
+                                        # В случае, когда мы положили порт в "admin down" на одном узле сети
+                                        #   и не смогли открыть на другом, то необходимо поднять его обратно
+                                        if not set_port_status(current_ring, admin_down[0], admin_down[2][0], "up"):
+                                            # Если порт не поднялся, то информируем об ошибке
+                                            pass
+                                        else:
+                                            # Подняли порт и оставляем кольцо в развернутом виде
+                                            pass
+                                else:
+                                    # В случае, когда не удалось закрыть порт, оставляем кольцо развернутым
+                                    pass
+
+                            with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
+                                ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
+                            ring_to_save[current_ring_name] = {"default_host": admin_down[0],
+                                                               "default_port": admin_down[2][0],
+                                                               "admin_down_host": successor_name,
+                                                               "admin_down_port": successor_intf}
                             with open(f'{root_dir}/rotated_rings.yaml', 'a') as save_ring:
                                 yaml.dump(ring_to_save, save_ring, default_flow_style=False)
                         else:

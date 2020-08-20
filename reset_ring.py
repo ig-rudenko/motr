@@ -48,8 +48,8 @@ if __name__ == '__main__':
                                 rotated_rings[current_ring_name]["default_host"],
                                 rotated_rings[current_ring_name]["default_port"], "down"):
 
-            print(f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_host"]} '
-                  f'на {rotated_rings[current_ring_name]["admin_down_port"]}')
+            print(f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_port"]} '
+                  f'на {rotated_rings[current_ring_name]["admin_down_host"]}')
             if motr.set_port_status(current_ring,
                                     rotated_rings[current_ring_name]["admin_down_host"],
                                     rotated_rings[current_ring_name]["admin_down_port"], "up"):
