@@ -1,1 +1,7 @@
 null: don't delete
+test_ring:
+  admin_down_host: SVSL-01-MotR-SSW1
+  admin_down_port: GE0/0/1
+  default_host: SVSL-01-MotR-SSW1
+  default_port: GE0/0/2
+  priority: 2

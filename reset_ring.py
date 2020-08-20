@@ -27,7 +27,7 @@ if __name__ == '__main__':
     with open(f'{root_dir}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         for ring in rotated_rings:
-            if current_ring_name == ring:           # Найдено
+            if current_ring_name == ring and rotated_rings[ring]['priority'] == 1:           # Найдено
                 print("GOT RING: "+ring)
                 break
         else:
