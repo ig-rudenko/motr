@@ -12,7 +12,7 @@ import os
 import subprocess
 from datetime import datetime
 import time
-import email_notifications
+import email_notifications as email
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
@@ -454,8 +454,8 @@ def main(this_is_the_second_loop: bool):
                     else:
                         i = -1
 
-                    successor_intf = find_port_by_desc(current_ring, successor_name,
-                                                       double_current_ring_list[current_ring_list.index(successor_name)+i])
+                    successor_to = double_current_ring_list[current_ring_list.index(successor_name) + i]
+                    successor_intf = find_port_by_desc(current_ring, successor_name, successor_to)
 
                     print(f'Закрываем порт {successor_intf} на {successor_name}')
                     if set_port_status(current_ring,
@@ -476,8 +476,7 @@ def main(this_is_the_second_loop: bool):
                                     # Если на втором проходе у нас при развороте кольца, снова все узлы доступны, то
                                     # это обрыв кабеля, в таком случае оставляем кольцо в развернутом виде
 
-                                    print(f"Проблема вероятнее всего находится между {successor_name} и "
-                                          f"{double_current_ring_list[current_ring_list.index(successor_name)+i]}")
+                                    print(f"Проблема вероятнее всего находится между {successor_name} и {successor_to}")
                                     with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
                                         ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
                                     ring_to_save[current_ring_name] = {"default_host": admin_down[0],
@@ -491,11 +490,9 @@ def main(this_is_the_second_loop: bool):
                                     # Отправка e-mail
                                     info = f'Возможен обрыв кабеля между {successor_name} и ' \
                                            f'{double_current_ring_list[current_ring_list.index(successor_name) + i]}\n'
-                                    email_notifications.send(current_ring_name, current_ring_list, devices_ping,
-                                                             new_ping_status, successor_name, successor_intf,
-                                                             double_current_ring_list[current_ring_list.index(successor_name) + i],
-                                                             admin_down[0], admin_down[2][0], admin_down[1][0],
-                                                             info)
+                                    email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
+                                               successor_name, successor_intf, successor_to,
+                                               admin_down[0], admin_down[2][0], admin_down[1][0], info)
                                     sys.exit()
 
                                 # Если после разворота все узлы сети доступны, то это может быть обрыв кабеля, либо
@@ -544,18 +541,18 @@ def main(this_is_the_second_loop: bool):
                                 ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
                             ring_to_save[current_ring_name] = {"default_host": admin_down[0],
                                                                "default_port": admin_down[2][0],
+                                                               "default_to": admin_down[1][0],
                                                                "admin_down_host": successor_name,
                                                                "admin_down_port": successor_intf,
+                                                               "admin_down_to": successor_to,
                                                                "priority": 1}
                             with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
                                 yaml.dump(ring_to_save, save_ring, default_flow_style=False)
 
                             # Отправка e-mail
-                            email_notifications.send(current_ring_name, current_ring_list, devices_ping,
-                                                     new_ping_status, admin_down[0], admin_down[2][0], admin_down[1][0],
-                                                     successor_name, successor_intf,
-                                                     double_current_ring_list[current_ring_list.index(successor_name)+i],
-                                                     '')
+                            email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
+                                       successor_name, successor_intf, successor_to,
+                                       admin_down[0], admin_down[2][0], admin_down[1][0])
                         else:
                             print(f"{admin_down[0]} Не удалось поднять порт {admin_down[2][0]}")
                             # Восстанавливаем состояние порта на преемнике

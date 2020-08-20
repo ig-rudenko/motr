@@ -5,7 +5,7 @@ from email.header import Header
 
 def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_devices_ping: list,
          admin_down_host: str, admin_down_port: str, admin_down_to: str, up_host: str, up_port: str,
-         up_to: str, info: str):
+         up_to: str, info: str = ''):
     '''
                         Отправка e-mail \n
     :param ring_name:           Имя кольца
@@ -23,9 +23,9 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
     '''
     host = 'mail.sevtelecom.ru'
     server_login = 'irudenko'
-    server_password = '1qaz2wsx!'
+    server_password = ''
 
-    to_addresses = ['atemnyh@sevtelecom.ru', 'irudenko@sevtelecom.ru']
+    to_addresses = ['irudenko@sevtelecom.ru']
     from_address = 'irudenko@sevtelecom.ru'
 
     status_before = ''

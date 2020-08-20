@@ -6,7 +6,8 @@ import yaml
 import sys
 import os
 from datetime import datetime
-import email_notifications
+import time
+import email_notifications as email
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
@@ -57,7 +58,28 @@ if __name__ == '__main__':
                 print(f"Кольцо развернуто!\n"
                       f"На узле сети {rotated_rings[current_ring_name]['default_host']} порт "
                       f"{rotated_rings[current_ring_name]['default_port']} в статусе admin down")
-                motr.delete_ring_from_deploying_list(current_ring_name) # Удаляем кольцо из списка требуемых к развороту
+
+                print("Ожидаем 1мин (не прерывать!)")
+                time.sleep(60)  # Ожидаем 60с на перестройку кольца
+                new_ping_status = motr.ring_ping_status(current_ring)
+                for _, available in new_ping_status:
+                    if not available:
+                        break
+                else:
+                    print("Все устройства в кольце после разворота доступны!\n")
+                    #Отправка e-mail
+                    email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
+                               rotated_rings[current_ring_name]['default_host'],
+                               rotated_rings[current_ring_name]['default_port'],
+                               rotated_rings[current_ring_name]['default_to'],
+                               rotated_rings[current_ring_name]['admin_down_host'],
+                               rotated_rings[current_ring_name]['admin_down_port'],
+                               rotated_rings[current_ring_name]['admin_down_to'])
+
+                    motr.delete_ring_from_deploying_list(current_ring_name) # Удаляем кольцо из списка требуемых к развороту
+                    sys.exit()      # Завершение работы программы
+                # В кольце есть недоступные устройства
+
 
             else:   # Если не удалось поднять порт на оборудовании с admin_down, то...
                 # ...поднимаем порт, который положили на предыдущем шаге
