@@ -119,7 +119,7 @@ def huawei_telnet_int_des(ip: str, login: str, password: str):
             print("    Время ожидания превышено! (timeout)")
 
 
-def search_admin_down(current_ring: dict, checking_device_name: str):
+def search_admin_down(current_ring: dict, current_ring_list: list, checking_device_name: str):
     '''
     Ищет есть ли у данного узла сети порт(ы) в состоянии "admin down" в сторону другого узла сети из этого кольца.
     Проверка осуществляется по наличию в description'е имени узла сети из текущего кольца.
@@ -393,14 +393,17 @@ def delete_ring_from_deploying_list(ring_name):
         yaml.dump(rotated_rings, save_ring, default_flow_style=False)  # Переписываем файл
 
 
-def main(this_is_the_second_loop: bool):
+def main(devices_ping: list, current_ring: dict, current_ring_list: list, current_ring_name: str,
+         this_is_the_second_loop: bool = False):
+    successor_name = ''
+
     for device_name, device_status in devices_ping:     # Листаем узлы сети и их доступность по "ping"
 
         print('-'*51+'\n'+'-'*51)
 
         print(f"device_name: {device_name} | device_status: {device_status}")
         if device_status:                                   # Если нашли доступное устройство, то...
-            admin_down = search_admin_down(current_ring, device_name)         # ...ищем admin down
+            admin_down = search_admin_down(current_ring, current_ring_list, device_name)    # ...ищем admin down
             if admin_down:                                  # 0 - host name, [1] - side host name, [2] - interface
 
                 # Делаем отметку, что данное кольцо уже участвует в развороте
@@ -481,8 +484,10 @@ def main(this_is_the_second_loop: bool):
                                         ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
                                     ring_to_save[current_ring_name] = {"default_host": admin_down[0],
                                                                        "default_port": admin_down[2][0],
+                                                                       "default_to": admin_down[1][0],
                                                                        "admin_down_host": successor_name,
                                                                        "admin_down_port": successor_intf,
+                                                                       "admin_down_to": successor_to,
                                                                        "priority": 2}
                                     with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
                                         yaml.dump(ring_to_save, save_ring, default_flow_style=False)
@@ -493,6 +498,7 @@ def main(this_is_the_second_loop: bool):
                                     email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
                                                successor_name, successor_intf, successor_to,
                                                admin_down[0], admin_down[2][0], admin_down[1][0], info)
+                                    print("Отправлено письмо!")
                                     sys.exit()
 
                                 # Если после разворота все узлы сети доступны, то это может быть обрыв кабеля, либо
@@ -522,7 +528,8 @@ def main(this_is_the_second_loop: bool):
                                             sys.exit()
 
                                         # Если есть недоступные узлы, то необходимо выполнить проверку кольца заново
-                                        main(this_is_the_second_loop=True)
+                                        main(devices_ping, current_ring, current_ring_list, current_ring_name,
+                                             this_is_the_second_loop=True)
 
                                     else:
                                         # В случае, когда мы положили порт в "admin down" на одном узле сети
@@ -553,6 +560,7 @@ def main(this_is_the_second_loop: bool):
                             email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
                                        successor_name, successor_intf, successor_to,
                                        admin_down[0], admin_down[2][0], admin_down[1][0])
+                            print("Отправлено письмо!")
                         else:
                             print(f"{admin_down[0]} Не удалось поднять порт {admin_down[2][0]}")
                             # Восстанавливаем состояние порта на преемнике
@@ -569,13 +577,7 @@ def main(this_is_the_second_loop: bool):
         print("Все узлы сети из данного кольца недоступны!")        # ...конец кольца
 
 
-if __name__ == '__main__':
-
-    if len(sys.argv) == 1:
-        print("Не указано имя узла сети!")
-        sys.exit()
-    dev = sys.argv[1]
-    successor_name = ''
+def start(dev: str):
     current_ring, current_ring_list, current_ring_name = find_ring_by_device(dev)
 
     # Заголовок
@@ -610,5 +612,15 @@ if __name__ == '__main__':
         print("Все устройства в кольце недоступны, разворот невозможен!")
         sys.exit()
 
-    main(this_is_the_second_loop=False)
+    main(devices_ping, current_ring, current_ring_list, current_ring_name)
+
+
+if __name__ == '__main__':
+
+    if len(sys.argv) == 1:
+        print("Не указано имя узла сети!")
+        sys.exit()
+    dev = sys.argv[1]
+
+    start(dev)
 

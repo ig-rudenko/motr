@@ -1,5 +1,5 @@
 null: don't delete
-test_ring:
+test_ring1:
   admin_down_host: SVSL-01-MotR-SSW1
   admin_down_port: GE0/0/1
   admin_down_to: GP15-Tech623in-ASW2
@@ -7,3 +7,11 @@ test_ring:
   default_port: GE0/0/2
   default_to: SVSL-01-MotR-ASW3
   priority: 1
+test_ring:
+  admin_down_host: SVSL-01-MotR-ASW2
+  admin_down_port: GE0/0/2
+  admin_down_to: SVSL-01-MotR-ASW1
+  default_host: SVSL-01-MotR-SSW1
+  default_port: GE0/0/1
+  default_to: GP15-Tech623in-ASW2
+  priority: 2

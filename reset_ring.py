@@ -10,6 +10,7 @@ import time
 import email_notifications as email
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
+successor_name = ''
 
 if __name__ == '__main__':
 
@@ -55,10 +56,10 @@ if __name__ == '__main__':
             if motr.set_port_status(current_ring,
                                     rotated_rings[current_ring_name]["admin_down_host"],
                                     rotated_rings[current_ring_name]["admin_down_port"], "up"):
+
                 print(f"Кольцо развернуто!\n"
                       f"На узле сети {rotated_rings[current_ring_name]['default_host']} порт "
                       f"{rotated_rings[current_ring_name]['default_port']} в статусе admin down")
-
                 print("Ожидаем 1мин (не прерывать!)")
                 time.sleep(60)  # Ожидаем 60с на перестройку кольца
                 new_ping_status = motr.ring_ping_status(current_ring)
@@ -67,7 +68,7 @@ if __name__ == '__main__':
                         break
                 else:
                     print("Все устройства в кольце после разворота доступны!\n")
-                    #Отправка e-mail
+                    # Отправка e-mail
                     email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
                                rotated_rings[current_ring_name]['default_host'],
                                rotated_rings[current_ring_name]['default_port'],
@@ -78,8 +79,12 @@ if __name__ == '__main__':
 
                     motr.delete_ring_from_deploying_list(current_ring_name) # Удаляем кольцо из списка требуемых к развороту
                     sys.exit()      # Завершение работы программы
-                # В кольце есть недоступные устройства
 
+                # Если в кольце есть недоступные устройства
+                print("После разворота в положение \"по умолчанию\" появились недоступные узлы сети\n"
+                      "Выполняем полную проверку заново!")
+                motr.delete_ring_from_deploying_list(current_ring_name)
+                motr.start(dev)
 
             else:   # Если не удалось поднять порт на оборудовании с admin_down, то...
                 # ...поднимаем порт, который положили на предыдущем шаге

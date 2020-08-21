@@ -1,6 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
+from re import findall
 
 
 def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_devices_ping: list,
@@ -23,9 +24,9 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
     '''
     host = 'mail.sevtelecom.ru'
     server_login = 'irudenko'
-    server_password = ''
+    server_password = '1qaz2wsx!'
 
-    to_addresses = ['irudenko@sevtelecom.ru']
+    to_addresses = ['atemnyh@sevtelecom.ru', 'irudenko@sevtelecom.ru']
     from_address = 'irudenko@sevtelecom.ru'
 
     status_before = ''
@@ -33,7 +34,7 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
 
     for device in current_ring_list:
         for dev_name, status in old_devices_ping:
-            if device == dev_name:
+            if device == dev_name and not bool(findall('SSW', device)):
                 if status:
                     status_before += ' ' * 10 + f'{device}  доступно\n'
                 else:
@@ -41,7 +42,7 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
 
     for device in current_ring_list:
         for dev_name, status in new_devices_ping:
-            if device == dev_name:
+            if device == dev_name and not bool(findall('SSW', device)):
                 if status:
                     status_after += ' ' * 10 + f'{device}  доступно\n'
                 else:
