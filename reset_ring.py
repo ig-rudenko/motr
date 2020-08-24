@@ -30,7 +30,7 @@ if __name__ == '__main__':
     with open(f'{root_dir}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         for ring in rotated_rings:
-            if current_ring_name == ring and rotated_rings[ring]['priority'] == 2:           # Найдено
+            if current_ring_name == ring and rotated_rings[ring]['priority'] == 1:           # Найдено
                 print("GOT RING: "+ring)
                 break
         else:
@@ -60,14 +60,14 @@ if __name__ == '__main__':
                 print(f"Кольцо развернуто!\n"
                       f"На узле сети {rotated_rings[current_ring_name]['default_host']} порт "
                       f"{rotated_rings[current_ring_name]['default_port']} в статусе admin down")
-                print("Ожидаем 1мин (не прерывать!)")
-                time.sleep(60)  # Ожидаем 60с на перестройку кольца
+                print("Ожидаем 2мин (не прерывать!)")
+                time.sleep(120)  # Ожидаем 2мин на перестройку кольца
                 new_ping_status = motr.ping_from_device(current_ring_list[0], current_ring)
                 for _, available in new_ping_status:
                     if not available:
                         break
                 else:
-                    print("Все устройства в кольце после разворота доступны!\n")
+                    print("Все устройства в кольце после разворота доступны!\nОтправка e-mail")
                     # Отправка e-mail
                     email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
                                rotated_rings[current_ring_name]['default_host'],

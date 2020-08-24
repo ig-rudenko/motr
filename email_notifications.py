@@ -58,20 +58,17 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
            f'в сторону узла {up_to}\n'\
            f'\nСостояние кольца после разворота: \n {status_after} \n'\
            f'{info}'
-    subject = 'COVID-19!'
-    text = 'Добрый день, будьте добры сдать текст на COVID-19!\n' \
-           'И спуститесь вниз для измерения температуры!'
 
     message = MIMEText(text, 'plain', 'utf-8')
     message['Subject'] = Header(subject, 'utf-8')
-    message['From'] = 'covid-19@sevtelecom.ru'
-    message['To'] = 'jryabushey@sevtelecom.ru'
+    message['From'] = 'ZABBIX@sevtelecom.ru'
+    message['To'] = 'irudenko@sevtelecom.ru'
 
     with smtplib.SMTP(host, 587) as server:
         server.login(server_login, server_password)
 
         server.sendmail(from_addr='irudenko@sevtelecom.ru',
-                        to_addrs='jryabushey@sevtelecom.ru',
+                        to_addrs=to_addresses[1],
                         msg=message.as_string())
         server.quit()
 

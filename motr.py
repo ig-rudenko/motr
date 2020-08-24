@@ -508,9 +508,9 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                        successor_name, successor_intf, "down"):   # Закрываем порт на "преемнике"
                         print(f'Поднимаем порт {admin_down[2][0]} на {admin_down[0]}')
                         if set_port_status(current_ring, admin_down[0], admin_down[2][0], "up"):
-                            print("Кольцо развернуто!\nОжидаем 1мин (не прерывать!)")
+                            print("Кольцо развернуто!\nОжидаем 2мин (не прерывать!)")
 
-                            time.sleep(60)      # Ожидаем 60с на перестройку кольца
+                            time.sleep(120)      # Ожидаем 2 мин на перестройку кольца
                             # Пингуем заново все устройства в кольце с агрегации
                             new_ping_status = ping_from_device(current_ring_list[0], current_ring)
                             for _, available in new_ping_status:
@@ -556,8 +556,8 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                     print(f'Поднимаем порт {successor_intf} на {successor_name}')
                                     if set_port_status(current_ring, successor_name, successor_intf, "up"):
 
-                                        print("Ожидаем 1мин (не прерывать!)")
-                                        time.sleep(60)      # Ожидаем 60с на перестройку кольца
+                                        print("Ожидаем 2мин (не прерывать!)")
+                                        time.sleep(120)      # Ожидаем 2 мин на перестройку кольца
                                         new_ping_status = ping_from_device(current_ring_list[0], current_ring)
                                         for _, available in new_ping_status:
                                             if not available:
