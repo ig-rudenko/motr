@@ -31,6 +31,7 @@ def cisco_telnet_int_des(ip: str, login: str, password: str):
         try:
             if telnet.expect(["[Uu]ser", 'Unable to connect']):
                 print("    Telnet недоступен!")
+                return False
             telnet.sendline(login)
             print(f"    Login {ip}")
             telnet.expect("[Pp]ass")
@@ -39,6 +40,7 @@ def cisco_telnet_int_des(ip: str, login: str, password: str):
             match = telnet.expect(['>', '#', 'Failed to send authen-req'])
             if match == 2:
                 print('    Неверный логин или пароль!')
+                return False
             elif match == 0:
                 telnet.sendline('enable')
                 telnet.expect('[Pp]ass')
@@ -208,6 +210,45 @@ def find_ring_by_device(device_name: str):
     sys.exit()
 
 
+def ping_from_device(device_name: str, ring: dict):
+    with pexpect.spawn(f"telnet {ring[device_name]['ip']}") as telnet:
+        try:
+            if telnet.expect(["[Uu]ser", 'Unable to connect']):
+                print("    Telnet недоступен!")
+                return False
+            telnet.sendline(ring[device_name]['user'])
+            print(f"    Login {ring[device_name]['user']}")
+            telnet.expect("[Pp]ass")
+            telnet.sendline(ring[device_name]['pass'])
+            print(f"    Pass *****")
+            if telnet.expect(['>', ']', 'Failed to send authen-req']) == 2:
+                print('    Неверный логин или пароль!')
+                return False
+            devices_status = [(device_name, True)]
+            for dev in ring:
+                if device_name != dev:
+                    try:
+                        telnet.sendline(f'ping {ring[dev]["ip"]}')
+                        match = telnet.expect(['timed out', 'time out', '0 percent', '[Rr]eply', 'min/avg'])
+                        if match <= 2:
+                            telnet.sendcontrol('c')
+                            devices_status.append((dev, False))
+                        else:
+                            telnet.sendcontrol('c')
+                            devices_status.append((dev, True))
+                        telnet.expect(['>', '#'])
+                    except pexpect.exceptions.TIMEOUT:
+                        devices_status.append((dev, False))
+                        telnet.sendcontrol('c')
+                        telnet.expect(['>', '#'])
+            telnet.sendline('quit')
+            print(devices_status)
+            return devices_status
+        except pexpect.exceptions.TIMEOUT:
+            print("    Время ожидания превышено! (timeout)")
+            return False
+
+
 def ring_ping_status(ring: dict):
     '''
     Функция определяет, какие из узлов сети в кольце доступны по "ping" \n
@@ -247,6 +288,8 @@ def give_me_interface_name(interface: str):
         return f"FastEthernet{interface_number[0][0]}"
     elif bool(findall('^[Gg]', interface)):
         return f"GigabitEthernet{interface_number[0][0]}"
+    elif bool(findall('^\d', interface)):
+        return findall('^\d+', interface)[0]
 
 
 def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
@@ -468,7 +511,8 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                             print("Кольцо развернуто!\nОжидаем 1мин (не прерывать!)")
 
                             time.sleep(60)      # Ожидаем 60с на перестройку кольца
-                            new_ping_status = ring_ping_status(current_ring)    # Пингуем заново все устройства в кольце
+                            # Пингуем заново все устройства в кольце с агрегации
+                            new_ping_status = ping_from_device(current_ring_list[0], current_ring)
                             for _, available in new_ping_status:
                                 if not available:
                                     break
@@ -514,7 +558,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
 
                                         print("Ожидаем 1мин (не прерывать!)")
                                         time.sleep(60)      # Ожидаем 60с на перестройку кольца
-                                        new_ping_status = ring_ping_status(current_ring)
+                                        new_ping_status = ping_from_device(current_ring_list[0], current_ring)
                                         for _, available in new_ping_status:
                                             if not available:
                                                 break
@@ -528,7 +572,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                             sys.exit()
 
                                         # Если есть недоступные узлы, то необходимо выполнить проверку кольца заново
-                                        main(devices_ping, current_ring, current_ring_list, current_ring_name,
+                                        main(new_ping_status, current_ring, current_ring_list, current_ring_name,
                                              this_is_the_second_loop=True)
 
                                     else:

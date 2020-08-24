@@ -62,7 +62,7 @@ if __name__ == '__main__':
                       f"{rotated_rings[current_ring_name]['default_port']} в статусе admin down")
                 print("Ожидаем 1мин (не прерывать!)")
                 time.sleep(60)  # Ожидаем 60с на перестройку кольца
-                new_ping_status = motr.ring_ping_status(current_ring)
+                new_ping_status = motr.ping_from_device(current_ring_list[0], current_ring)
                 for _, available in new_ping_status:
                     if not available:
                         break
@@ -83,8 +83,7 @@ if __name__ == '__main__':
                 # Если в кольце есть недоступные устройства
                 print("После разворота в положение \"по умолчанию\" появились недоступные узлы сети\n"
                       "Выполняем полную проверку заново!")
-                motr.delete_ring_from_deploying_list(current_ring_name)
-                motr.start(dev)
+                motr.main(new_ping_status, current_ring, current_ring_list, current_ring_name)
 
             else:   # Если не удалось поднять порт на оборудовании с admin_down, то...
                 # ...поднимаем порт, который положили на предыдущем шаге

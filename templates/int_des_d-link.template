@@ -1,0 +1,10 @@
+Value Port (\d+(\(C\)|\(F\)){0,1})
+Value State (\S+)
+Value Settings (.+)
+Value Connection (\S+)
+Value AddrLearn (Enable)
+Value DESCRIPTION (\S+)
+
+Start
+  ^\s${Port}\s+${State}\s+${Settings}\s+${Connection}\s+${AddrLearn}
+  ^.*\sDesc: ${DESCRIPTION} -> Record
