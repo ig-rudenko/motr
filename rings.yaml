@@ -27,38 +27,43 @@ test_ring:
 
 
 test_ring2:
-  SVSL-01-MotR-SSW2:
-    vendor: huawei
-    user: motr
-    pass: motrpass
-  SVSL-01-MotR-ASW11:
-    vendor: huawei
-    user: motr
-    pass: motrpass
-  SVSL-01-MotR-ASW12:
-    vendor: huawei
-    user: motr
-    pass: motrpass
-  SVSL-01-MotR-ASW13:
-    vendor: huawei
-    user: motr
-    pass: motrpass
-
-
-test_ring3:
-  SVSL-01-MotR-SSW3:
-    vendor: huawei
-    user: motr
-    pass: motrpass
-  SVSL-01-MotR-ASW21:
-    vendor: huawei
-    user: motr
-    pass: motrpass
-  SVSL-01-MotR-ASW22:
-    vendor: huawei
-    user: motr
-    pass: motrpass
-  SVSL-01-MotR-ASW23:
-    vendor: huawei
-    user: motr
-    pass: motrpass
+  SVSL-04-GP15-SSW1:
+    vendor: cisco
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 192.168.228.33
+  SVSL-041-Pozhar26v-ASW1:
+    vendor: d-link
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.69.95
+  SVSL-041-Pozhar22Fursh-ASW1:
+    vendor: d-link
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.33
+  SVSL-041-Pozhar22Fitn-ASW1:
+    vendor: d-link
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.35
+  SVSL-041-Pozhar22PlSport-ASW1:
+    vendor: d-link
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.40
+  SVSL-041-Pozhar20k2-ASW1:
+    vendor: d-link
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.69.129
+  SVSL-041-Pozhar20k1-ASW1:
+    vendor: d-link
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.69.130
+  SVSL-041-Pozhar20k3-ASW1:
+    vendor: d-link
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.69.172

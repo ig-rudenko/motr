@@ -503,3 +503,98 @@ Vlanif1                       down    down     HUAWEI, Quidway Series, Vlanif1 I
 Vlanif10                      up      up       HUAWEI, Quidway Series, Vlanif10 
                                                Interface              
 <SVSL-01-MotR-ASW3
+
+ Port   State/          Settings             Connection           Address
+        MDI       Speed/Duplex/FlowCtrl  Speed/Duplex/FlowCtrl    Learning
+ -----  --------  ---------------------  ---------------------    --------
+ 1      Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 2      Enabled   Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc: NOMON_4600516_60286
+ 3      Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 4      Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 5      Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 6      Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 7      Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 8      Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 9      Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 10     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 11     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 12     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 13     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 14     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 15     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 16     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 17     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 18     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 19     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 20     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 21     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 22     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 23     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc: VOIP
+ 24     Disabled  Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc: d
+ 25(C)  Enabled   Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc: TO_SVSL-041-Pozhar26v-ASW1
+ 25(F)  Enabled   Auto/Disabled          1000M/Full/None          Enabled
+
+ Desc: TO_SVSL-041-Pozhar26v-ASW1
+ 26(C)  Enabled   Auto/Disabled          LinkDown                 Enabled
+        Auto
+ Desc:
+ 26(F)  Enabled   Auto/Disabled          LinkDown                 Enabled
+
+ Desc:
+ 27     Enabled   Auto/Disabled          LinkDown                 Enabled
+
+ Desc:
+ 28     Enabled   Auto/Enabled           LinkDown                 Enabled
+
+ Desc: TO_SVSL-041-Pozhar22Fitn-ASW1
+

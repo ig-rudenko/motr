@@ -4,6 +4,28 @@ from email.header import Header
 from re import findall
 
 
+def send_text(subject: str, text: str):
+    host = 'mail.sevtelecom.ru'
+    server_login = 'irudenko'
+    server_password = '1qaz2wsx!'
+
+    to_addresses = ['atemnyh@sevtelecom.ru', 'irudenko@sevtelecom.ru']
+    from_address = 'irudenko@sevtelecom.ru'
+
+    message = MIMEText(text, 'plain', 'utf-8')
+    message['Subject'] = Header(subject, 'utf-8')
+    message['From'] = 'ZABBIX@sevtelecom.ru'
+    message['To'] = 'irudenko@sevtelecom.ru'
+
+    with smtplib.SMTP(host, 587) as server:
+        server.login(server_login, server_password)
+
+        server.sendmail(from_addr='irudenko@sevtelecom.ru',
+                        to_addrs=to_addresses[1],
+                        msg=message.as_string())
+        server.quit()
+
+
 def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_devices_ping: list,
          admin_down_host: str, admin_down_port: str, admin_down_to: str, up_host: str, up_port: str,
          up_to: str, info: str = ''):
