@@ -535,8 +535,7 @@ def delete_ring_from_deploying_list(ring_name):
 
 def validation():
     valid_1 = True
-    validation_text = ''
-    validation_text += f'Проверка файла {root_dir}/rings.yaml'
+    validation_text = f'Проверка файла {root_dir}/rings.yaml'
     try:
         with open(f'{root_dir}/rings.yaml', 'r') as rings_yaml:  # Чтение файла
             try:

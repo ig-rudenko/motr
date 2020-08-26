@@ -16,7 +16,11 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         print("Не указано имя узла сети!")
         sys.exit()
+    if not motr.validation():
+        sys.exit()
+
     dev = sys.argv[1]
+
     current_ring, current_ring_list, current_ring_name = motr.find_ring_by_device(dev)
 
     if not motr.validation():
