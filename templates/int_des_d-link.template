@@ -1,10 +1,8 @@
 Value Port (\d+(\S+){0,1})
 Value State (\S+)
 Value Settings (\S+)
-Value Connection (\S+)
-Value AddrLearn (\S+)
 Value DESCRIPTION (\S+)
 
 Start
-  ^\s${Port}\s+${State}\s+${Settings}\s+${Connection}\s+${AddrLearn}
+  ^\s${Port}\s+${State}\s+${Settings}\s+\S+\s+\S+
   ^.*\sDesc: ${DESCRIPTION} -> Record

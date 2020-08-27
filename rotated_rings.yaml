@@ -7,4 +7,19 @@ test_ring1:
   default_port: GE0/0/2
   default_to: SVSL-01-MotR-ASW3
   priority: 1
-tsat: Deploying
+SVSL-04-GP15-SSW1_p0/1_p0/25_test:
+  admin_down_host: SVSL-041-Pozhar22Fitn-ASW1
+  admin_down_port: 25(F)
+  admin_down_to: SVSL-041-Pozhar22Fursh-ASW1
+  default_host: SVSL-04-GP15-SSW1
+  default_port: Gi0/1
+  default_to: SVSL-041-Pozhar26v-ASW1
+  priority: 1
+SVSL-04-GP15-SSW1_p0/1_p0/25:
+  admin_down_host: SVSL-041-Pozhar22Fitn-ASW1
+  admin_down_port: 25(F)
+  admin_down_to: SVSL-041-Pozhar22Fursh-ASW1
+  default_host: SVSL-04-GP15-SSW1
+  default_port: Gi0/1
+  default_to: SVSL-041-Pozhar26v-ASW1
+  priority: 2

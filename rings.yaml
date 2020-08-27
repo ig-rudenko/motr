@@ -26,7 +26,7 @@ test_ring:
     ip: 10.29.4.150
 
 
-test_ring2:
+SVSL-04-GP15-SSW1_p0/1_p0/25:
   SVSL-04-GP15-SSW1:
     vendor: cisco
     user: NOC

@@ -281,6 +281,7 @@ def ping_from_device(device_name: str, ring: dict):
                 print('    Неверный логин или пароль!')
                 return False
             devices_status = [(device_name, True)]
+            print(device_name, True)
             for dev in ring:
                 if device_name != dev:
                     try:
@@ -332,14 +333,15 @@ def ring_ping_status(ring: dict):
     return status
 
 
-def give_me_interface_name(interface: str):
+def give_me_interface_name(interface):
     '''
     Приводит имя интерфейса к общепринятому виду \n
     Например: Eth0/1 -> Ethernet0/1 \n
     :param interface:   Интерфейс в сыром виде (raw)
     :return:            Интерфейс в общепринятом виде
     '''
-    interface_number = findall(r"\S(\d+([\/\\]?\d*)*)", interface)
+    interface = str(interface)
+    interface_number = findall(r"\S(\d+([\/\\]?\d*)*)", str(interface))
     if bool(findall('^[Ee]', interface)):
         return f"Ethernet{interface_number[0][0]}"
     elif bool(findall('^[Ff]', interface)):
@@ -367,6 +369,11 @@ def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
         # print(main_name, target_name)
     if current_ring[main_name]["vendor"] == 'cisco':
         output = cisco_telnet_int_des(current_ring[main_name]["ip"],
+                                      current_ring[main_name]["user"],
+                                      current_ring[main_name]["pass"])
+
+    if current_ring[main_name]["vendor"] == 'd-link':
+        output = dlink_telnet_int_des(current_ring[main_name]["ip"],
                                       current_ring[main_name]["user"],
                                       current_ring[main_name]["pass"])
 
@@ -456,22 +463,20 @@ def set_port_status(current_ring: dict, device_name: str, interface_name: str, p
                     telnet.sendline('sevaccess')
                     telnet.expect('#')
                 telnet.sendline('conf t')
-                telnet.expect('(config)#')
-                print(f'    {device_name}(config)#')
+                telnet.expect('#')
                 interface_name = give_me_interface_name(interface_name)
                 telnet.sendline(f"interface {interface_name}")
-                telnet.expect('(config-if)#')
-                print(f"    [{device_name}]interface {interface_name}")
-                telnet.expect(f'-{interface_name}]')
+                telnet.expect('#')
+                print(f"    {device_name}(config)#interface {interface_name}")
                 if port_status == 'down':
                     telnet.sendline('sh')
                     print(f'    {device_name}(config-if)#shutdown')
                 elif port_status == 'up':
                     telnet.sendline('no sh')
                     print(f'    {device_name}(config-if)#no shutdown')
-                telnet.expect(f'(config-if)#')
+                telnet.expect(f'#')
                 telnet.sendline('exit')
-                telnet.expect('(config)')
+                telnet.expect('#')
                 telnet.sendline('exit')
                 telnet.expect('#')
                 telnet.sendline('write')
@@ -506,13 +511,18 @@ def set_port_status(current_ring: dict, device_name: str, interface_name: str, p
                 telnet.expect('#')
                 interface_name = give_me_interface_name(interface_name)
                 if port_status == 'down':
-                    telnet.sendline(f'config ports {interface_name} state disable')
-                    print(f'    {device_name}config ports {interface_name} state disable')
+                    telnet.sendline(f'config ports {interface_name} medium_type fiber state disable')
+                    print(f'    {device_name}config ports {interface_name} medium_type fiber state disable')
+                    telnet.sendline(f'config ports {interface_name} medium_type copper state disable')
+                    print(f'    {device_name}config ports {interface_name} medium_type copper state disable')
                 elif port_status == 'up':
-                    telnet.sendline(f'config ports {interface_name} state enable')
-                    print(f'    {device_name}config ports {interface_name} state enable')
+                    telnet.sendline(f'config ports {interface_name} medium_type fiber state enable')
+                    print(f'    {device_name}config ports {interface_name} medium_type fiber state enable')
+                    telnet.sendline(f'config ports {interface_name} medium_type copper state enable')
+                    print(f'    {device_name}config ports {interface_name} medium_type copper state enable')
                 telnet.expect('#')
-                if telnet.expect(['[Success]', '#']):
+                telnet.sendline('save')
+                if telnet.expect(['Success', '#']):
                     print("    Don't saved!")
                 else:
                     print("    Saved!")
