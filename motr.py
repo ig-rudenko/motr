@@ -13,6 +13,7 @@ import subprocess
 from datetime import datetime
 import time
 import email_notifications as email
+import configparser
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
@@ -974,11 +975,62 @@ def time_sleep(sec: int):
         time.sleep(1)
 
 
+def set_config():
+    if not os.path.exists(f'{root_dir}/config.conf'):
+        config = configparser.ConfigParser()
+        config.add_section('Settings')
+        config.set("Settings", 'email_notifications', 'enable')
+        config.set("Settings", 'rings_directory', 'rings/*')
+        with open('config.conf', 'w') as cf:
+            config.write(cf)
+
+
+def return_files(path: str):
+    files = os.listdir(path)
+    rings_f = []
+    for file in files:
+        if os.path.isfile(os.path.join(path, file)):
+            rings_f.append(os.path.join(path, file))
+        elif os.path.isdir(os.path.join(path, file)):
+            rings_f += return_files(os.path.join(path, file))
+    return rings_f
+
+
+def get_rings():
+    config = configparser.ConfigParser()
+    config.read('config.conf')
+
+    rings_directory = config.get("Settings", 'rings_directory').split(',')
+    rings_files = []
+
+    for elem in rings_directory:
+        elem = elem.strip()
+        elem = elem[:-2] if elem.endswith('/*') else elem
+        elem = elem[:-1] if elem.endswith('/') else elem
+        elem = os.path.join(root_dir, elem[1:]) if elem.startswith('~') else elem
+        if bool(findall('\w\*$', elem)):
+            print(elem)
+            root, head = os.path.split(elem)
+            sub_files = os.listdir(root)
+            for sub_elem in sub_files:
+                if sub_elem.startswith(head[:-1]):
+                    if os.path.isfile(os.path.join(root, sub_elem)):
+                        rings_files.append(os.path.join(root, sub_elem))
+                    elif os.path.isdir(os.path.join(root, sub_elem)):
+                        rings_files += return_files(os.path.join(root, sub_elem))
+        if os.path.isfile(elem):
+            rings_files.append(elem)
+        elif os.path.isdir(elem):
+            rings_files += return_files(elem)
+    return [i for i in set(rings_files)]
+
+
 if __name__ == '__main__':
 
-    if len(sys.argv) == 1:
-        print("Не указано имя узла сети!")
-        sys.exit()
-
-    if validation():
-        start(sys.argv[1])
+    set_config()
+    # if len(sys.argv) == 1:
+    #     print("Не указано имя узла сети!")
+    #     sys.exit()
+    #
+    # if validation():
+    #     start(sys.argv[1])
