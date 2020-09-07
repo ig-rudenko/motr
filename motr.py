@@ -650,7 +650,7 @@ def interfaces(current_ring: dict, checking_device_name: str):
                         telnet.sendline('enable')
                         telnet.expect('[Pp]ass')
                         telnet.sendline('sevaccess')
-                    telnet.expect('#')
+                    #telnet.expect('#')
                     telnet.sendline("sh int des")
                     output = ''
                     while True:
@@ -1039,12 +1039,15 @@ if __name__ == '__main__':
         print("Не указано имя узла сети!")
         sys.exit()
     get_config()
-    if len(sys.argv) == 3:
-        if sys.argv[2] == '--check':
-            current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
-            devices_ping = ping_devices(current_ring)
-            for device in current_ring_list:
-                print(search_admin_down(current_ring, current_ring_list, device))
+
     if validation(rings_files):
-        print('as')
-        start(sys.argv[1])
+        if len(sys.argv) == 3:
+            if sys.argv[2] == '--check':
+                current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
+                devices_ping = ping_devices(current_ring)
+                for device in current_ring_list:
+                    for d, s in devices_ping:
+                        if device == d and s:
+                            print(search_admin_down(current_ring, current_ring_list, device))
+        else:
+            start(sys.argv[1])
