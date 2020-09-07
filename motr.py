@@ -595,7 +595,7 @@ def interfaces(current_ring: dict, checking_device_name: str):
                 telnet.sendline('show version')
                 version = ''
                 while True:
-                    m = telnet.expect([']', '-More-', '>', '#'])
+                    m = telnet.expect([r']$', '-More-', r'>$', r'#$'])
                     version += str(telnet.before.decode('utf-8'))
                     if m == 1:
                         telnet.sendline(' ')
@@ -650,11 +650,11 @@ def interfaces(current_ring: dict, checking_device_name: str):
                         telnet.sendline('enable')
                         telnet.expect('[Pp]ass')
                         telnet.sendline('sevaccess')
-                    #telnet.expect('#')
+                    telnet.expect('#')
                     telnet.sendline("sh int des")
                     output = ''
                     while True:
-                        match = telnet.expect(['#', "--More--", pexpect.TIMEOUT])
+                        match = telnet.expect([r'#$', "--More--", pexpect.TIMEOUT])
                         page = str(telnet.before.decode('utf-8')).replace("[42D", '')
                         # page = re.sub(" +\x08+ +\x08+", "\n", page)
                         output += page.strip()
@@ -1049,5 +1049,17 @@ if __name__ == '__main__':
                     for d, s in devices_ping:
                         if device == d and s:
                             print(search_admin_down(current_ring, current_ring_list, device))
+            elif sys.argv[2] == '--show-int':
+                current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
+                devices_ping = ping_devices(current_ring)
+                for device in current_ring_list:
+                    for d, s in devices_ping:
+                        if device == d and s:
+                            sh = interfaces(current_ring, device)
+                            if sh:
+                                for line in sh:
+                                    print(line)
+                            else:
+                                print(sh)
         else:
             start(sys.argv[1])
