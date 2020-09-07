@@ -1,0 +1,21 @@
+test_ring:
+  SVSL-01-MotR-SSW1:
+    user: motr
+    pass: motrpass
+    ip: 10.29.4.203
+  GP15-Tech623in-ASW2:
+    user: motr
+    pass: motrpass
+    ip: 10.29.4.32
+  SVSL-01-MotR-ASW1:
+    user: motr
+    pass: motrpass
+    ip: 10.29.4.147
+  SVSL-01-MotR-ASW2:
+    user: motr
+    pass: motrpass
+    ip: 10.29.4.149
+  SVSL-01-MotR-ASW3:
+    user: motr
+    pass: motrpass
+    ip: 10.29.4.150
