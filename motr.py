@@ -47,10 +47,9 @@ def get_ring(device_name: str):
              2 Узлы сети в кольце (list)
              3 Имя кольца (str)
     '''
-    rings_files = os.listdir(f'{root_dir}/rings')
-    print(rings_files)
+    print('---- def get_ring ----')
     for file in rings_files:
-        with open(f'{root_dir}/rings/{file}', 'r') as rings_yaml:      # Чтение файла
+        with open(file, 'r') as rings_yaml:      # Чтение файла
             rings = yaml.safe_load(rings_yaml)      # Перевод из yaml в словарь
             for ring in rings:                      # Перебираем все кольца
                 for device in rings[ring]:              # Перебираем оборудование в кольце%
@@ -585,10 +584,9 @@ def interfaces(current_ring: dict, checking_device_name: str):
                 print("    Telnet недоступен!")
                 return False
             telnet.sendline(current_ring[checking_device_name]["user"])
-            print(f"    Login to {checking_device_name}")
+            print(f"    Login to {checking_device_name} {current_ring[checking_device_name]['ip']}")
             telnet.expect("[Pp]ass")
             telnet.sendline(current_ring[checking_device_name]["pass"])
-            print(f"    Pass to {checking_device_name}")
             match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
             if match == 3:
                 print('    Неверный логин или пароль!')
@@ -982,7 +980,7 @@ def get_config() -> None:
         with open('config.conf', 'w') as cf:
             config.write(cf)
     config = configparser.ConfigParser()
-    config.read('config.conf')
+    config.read(f'{root_dir}/config.conf')
     email_notification = 'enable' if config.get("Settings", 'email_notification') == 'enable' else 'disable'
     rings_files = get_rings()
 
@@ -1009,7 +1007,7 @@ def get_rings():
     :return: Список файлов с кольцами
     '''
     config = configparser.ConfigParser()
-    config.read('config.conf')
+    config.read(f'{root_dir}/config.conf')
 
     rings_directory = config.get("Settings", 'rings_directory').split(',')
     rings_files = []
@@ -1041,6 +1039,12 @@ if __name__ == '__main__':
         print("Не указано имя узла сети!")
         sys.exit()
     get_config()
+    if len(sys.argv) == 3:
+        if sys.argv[2] == '--check':
+            current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
+            devices_ping = ping_devices(current_ring)
+            for device in current_ring_list:
+                print(search_admin_down(current_ring, current_ring_list, device))
     if validation(rings_files):
         print('as')
         start(sys.argv[1])

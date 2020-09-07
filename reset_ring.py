@@ -10,22 +10,20 @@ import email_notifications as email
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 successor_name = ''
+email_notification = 'enable'
+rings_files = []
 
 if __name__ == '__main__':
 
     if len(sys.argv) == 1:
         print("Не указано имя узла сети!")
         sys.exit()
-    if not motr.validation():
+    motr.get_config()
+    if not motr.validation(rings_files):
         sys.exit()
 
     dev = sys.argv[1]
-
     current_ring, current_ring_list, current_ring_name = motr.get_ring(dev)
-
-    if not motr.validation():
-        email.send_text('Ошибка в развороте колец!', 'Файл(ы) структуры колец')
-        sys.exit()
 
     # Заголовок
     print('\n')
@@ -79,13 +77,14 @@ if __name__ == '__main__':
                 else:
                     print("Все устройства в кольце после разворота доступны!\nОтправка e-mail")
                     # Отправка e-mail
-                    email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
-                               rotated_rings[current_ring_name]['default_host'],
-                               rotated_rings[current_ring_name]['default_port'],
-                               rotated_rings[current_ring_name]['default_to'],
-                               rotated_rings[current_ring_name]['admin_down_host'],
-                               rotated_rings[current_ring_name]['admin_down_port'],
-                               rotated_rings[current_ring_name]['admin_down_to'])
+                    if email_notification == 'enable':
+                        email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
+                                   rotated_rings[current_ring_name]['default_host'],
+                                   rotated_rings[current_ring_name]['default_port'],
+                                   rotated_rings[current_ring_name]['default_to'],
+                                   rotated_rings[current_ring_name]['admin_down_host'],
+                                   rotated_rings[current_ring_name]['admin_down_port'],
+                                   rotated_rings[current_ring_name]['admin_down_to'])
 
                     motr.delete_ring_from_deploying_list(current_ring_name) # Удаляем кольцо из списка требуемых к развороту
                     sys.exit()      # Завершение работы программы
