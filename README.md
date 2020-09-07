@@ -10,25 +10,21 @@
 ```yaml
 Имя_кольца:
   Узел_сети_1:
-    vendor: huawei
     user: (логин)
     pass: (пароль)
     ip: 192.168.0.10
     
   Узел_сети_2:
-    vendor: cisco
     user: (логин)
     pass: (пароль)
     ip: 192.168.0.20
     
   Узел_сети_3:
-    vendor: d-link
     user: (логин)
     pass: (пароль)
     ip: 192.168.0.30
 ```
 
-* `vendor` - производитель оборудования (huawei, cisco, d-link)
 * `user` - логин пользователя telnet
 * `pass` - пароль пользователя telnet
 * `ip` - IP адрес узла сети
