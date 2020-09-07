@@ -1,26 +1,21 @@
 test_ring:
   SVSL-01-MotR-SSW1:
-    vendor: huawei
     user: motr
     pass: motrpass
     ip: 10.29.4.203
   GP15-Tech623in-ASW2:
-    vendor: huawei
     user: motr
     pass: motrpass
     ip: 10.29.4.32
   SVSL-01-MotR-ASW1:
-    vendor: huawei
     user: motr
     pass: motrpass
     ip: 10.29.4.147
   SVSL-01-MotR-ASW2:
-    vendor: huawei
     user: motr
     pass: motrpass
     ip: 10.29.4.149
   SVSL-01-MotR-ASW3:
-    vendor: huawei
     user: motr
     pass: motrpass
     ip: 10.29.4.150
@@ -67,3 +62,39 @@ SVSL-04-GP15-SSW1_p0/1_p0/25:
     user: NOC
     pass: oncenoc2020!@#
     ip: 172.20.69.172
+
+
+SVSL-05-Vakulenchuka22-SSW2_p0/17_p0/27:
+  SVSL-05-Vakulenchuka22-SSW2:
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 192.168.228.44
+  SVSL-052-Vakulench53k8-ASW1:
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.176
+  SVSL-052-Vakulench53k9-ASW1:
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.175
+  SVSL-052-Vakulench53k10p4-ASW1:
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.245
+  SVSL-052-Vakulench53k10p1-ASW1:
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.246
+  SVSL-052-Vakulench53k5-ASW1:
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.69.219
+  SVSL-052-Vakulench53k7p4-ASW1:
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.221
+  SVSL-052-Vakulench53k7p2-ASW1:
+    user: NOC
+    pass: oncenoc2020!@#
+    ip: 172.20.68.222
+

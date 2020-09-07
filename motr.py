@@ -17,7 +17,7 @@ import email_notifications as email
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
 
-def dlink_telnet_int_des(ip: str, login: str, password: str):
+def __dlink_telnet_int_des(ip: str, login: str, password: str):
     '''
     Подключается через telnet к оборудованию производителя D-link
     и выдает информацию о портах, их состояние и description
@@ -37,8 +37,7 @@ def dlink_telnet_int_des(ip: str, login: str, password: str):
             telnet.expect("[Pp]ass")
             telnet.sendline(password)
             print(f"    Pass {ip}")
-            match = telnet.expect(['>', '#', 'Failed to send authen-req'])
-            if match == 2:
+            if telnet.expect(['>', '#', 'Failed to send authen-req']) == 2:
                 print('    Неверный логин или пароль!')
                 return False
             telnet.sendline('enable admin')
@@ -70,7 +69,7 @@ def dlink_telnet_int_des(ip: str, login: str, password: str):
             print("    Время ожидания превышено! (timeout)")
 
 
-def cisco_telnet_int_des(ip: str, login: str, password: str):
+def __cisco_telnet_int_des(ip: str, login: str, password: str):
     '''
     Подключается через telnet к оборудованию производителя Cisco
     и выдает информацию о портах, их состояние и description
@@ -121,7 +120,7 @@ def cisco_telnet_int_des(ip: str, login: str, password: str):
             print("    Время ожидания превышено! (timeout)")
 
 
-def huawei_telnet_int_des(ip: str, login: str, password: str):
+def __huawei_telnet_int_des(ip: str, login: str, password: str):
     '''
     Подключается через telnet к оборудованию производителя Huawei
     и выдает информацию о портах, их состояние и description
@@ -173,12 +172,13 @@ def huawei_telnet_int_des(ip: str, login: str, password: str):
             print("    Время ожидания превышено! (timeout)")
 
 
-def search_admin_down(current_ring: dict, current_ring_list: list, checking_device_name: str):
+def __search_admin_down2(current_ring: dict, current_ring_list: list, checking_device_name: str):
     '''
     Ищет есть ли у данного узла сети порт(ы) в состоянии "admin down" в сторону другого узла сети из этого кольца.
     Проверка осуществляется по наличию в description'е имени узла сети из текущего кольца.
 
     :param current_ring:         Кольцо
+    :param current_ring_list:    Список узлов сети в кольце
     :param checking_device_name: Имя узла сети
     :return:    В случае успеха возвращает имя оборудования с портом(ми) "admin down" и имя оборудования к которому
                 ведет этот порт и интерфейс. Если нет портов "admin down", то возвращает "False"
@@ -186,17 +186,17 @@ def search_admin_down(current_ring: dict, current_ring_list: list, checking_devi
     print("---- def search_admin_down ----")
     output = ''
     if current_ring[checking_device_name]["vendor"] == 'huawei':
-        output = huawei_telnet_int_des(current_ring[checking_device_name]["ip"],
+        output = __huawei_telnet_int_des(current_ring[checking_device_name]["ip"],
                                        current_ring[checking_device_name]["user"],
                                        current_ring[checking_device_name]["pass"])
 
     elif current_ring[checking_device_name]["vendor"] == 'cisco':
-        output = cisco_telnet_int_des(current_ring[checking_device_name]["ip"],
+        output = __cisco_telnet_int_des(current_ring[checking_device_name]["ip"],
                                       current_ring[checking_device_name]["user"],
                                       current_ring[checking_device_name]["pass"])
 
     elif current_ring[checking_device_name]["vendor"] == 'd-link':
-        output = dlink_telnet_int_des(current_ring[checking_device_name]["ip"],
+        output = __dlink_telnet_int_des(current_ring[checking_device_name]["ip"],
                                       current_ring[checking_device_name]["user"],
                                       current_ring[checking_device_name]["pass"])
 
@@ -212,7 +212,7 @@ def search_admin_down(current_ring: dict, current_ring_list: list, checking_devi
     if result:                                  # Если найден admin_down, то...
         for dev_name in current_ring_list:              # ...перебираем узлы сети в кольце:
             for res_line in result:                     # Перебираем все найденные интерфейсы:
-                if bool(findall(dev_name, res_line[3])) and (
+                if bool(findall(dev_name, res_line[2])) and (
                         bool(findall('\*down', res_line[1])) or res_line[1] == 'admin down' or res_line[1] == 'Disabled'):
                     # ...это хост, к которому закрыт порт от проверяемого коммутатора
                     ad_to_this_host.append(dev_name)
@@ -244,7 +244,7 @@ def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str)
         return False
 
 
-def find_ring_by_device(device_name: str):
+def get_ring(device_name: str):
     '''
     Функция для поиска кольца, к которому относится переданный узел сети \n
     :param device_name: Уникальное имя узла сети
@@ -252,17 +252,20 @@ def find_ring_by_device(device_name: str):
              2 Узлы сети в кольце (list)
              3 Имя кольца (str)
     '''
-    with open(f'{root_dir}/rings.yaml', 'r') as rings_yaml:      # Чтение файла
-        rings = yaml.safe_load(rings_yaml)      # Перевод из yaml в словарь
-        for ring in rings:                      # Перебираем все кольца
-            for device in rings[ring]:              # Перебираем оборудование в кольце%
-                if device == device_name:               # Если нашли переданный узел сети, то...
-                    current_ring = rings[ring]              # ...рассматриваем данное кольцо
-                    current_ring_list = []
-                    current_ring_name = ring
-                    for i in current_ring:
-                        current_ring_list.append(i)
-                    return current_ring, current_ring_list, str(current_ring_name)
+    rings_files = os.listdir(f'{root_dir}/rings')
+    print(rings_files)
+    for file in rings_files:
+        with open(f'{root_dir}/rings/{file}', 'r') as rings_yaml:      # Чтение файла
+            rings = yaml.safe_load(rings_yaml)      # Перевод из yaml в словарь
+            for ring in rings:                      # Перебираем все кольца
+                for device in rings[ring]:              # Перебираем оборудование в кольце%
+                    if device == device_name:               # Если нашли переданный узел сети, то...
+                        current_ring = rings[ring]              # ...рассматриваем данное кольцо
+                        current_ring_list = []
+                        current_ring_name = ring
+                        for i in current_ring:
+                            current_ring_list.append(i)
+                        return current_ring, current_ring_list, str(current_ring_name)
     sys.exit()
 
 
@@ -308,7 +311,7 @@ def ping_from_device(device_name: str, ring: dict):
             return False
 
 
-def ring_ping_status(ring: dict):
+def ping_devices(ring: dict):
     '''
     Функция определяет, какие из узлов сети в кольце доступны по "ping" \n
     :param ring: Кольцо
@@ -333,26 +336,7 @@ def ring_ping_status(ring: dict):
     return status
 
 
-def give_me_interface_name(interface):
-    '''
-    Приводит имя интерфейса к общепринятому виду \n
-    Например: Eth0/1 -> Ethernet0/1 \n
-    :param interface:   Интерфейс в сыром виде (raw)
-    :return:            Интерфейс в общепринятом виде
-    '''
-    interface = str(interface)
-    interface_number = findall(r"\S(\d+([\/\\]?\d*)*)", str(interface))
-    if bool(findall('^[Ee]', interface)):
-        return f"Ethernet{interface_number[0][0]}"
-    elif bool(findall('^[Ff]', interface)):
-        return f"FastEthernet{interface_number[0][0]}"
-    elif bool(findall('^[Gg]', interface)):
-        return f"GigabitEthernet{interface_number[0][0]}"
-    elif bool(findall('^\d', interface)):
-        return findall('^\d+', interface)[0]
-
-
-def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
+def __find_port_by_desc2(current_ring: dict, main_name: str, target_name: str):
     '''
     Поиск интерфейса с description имеющим в себе имя другого оборудования \n
     :param current_ring: Кольцо
@@ -363,17 +347,17 @@ def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
     print("---- def find_port_by_desc ----")
     output = ''
     if current_ring[main_name]["vendor"] == 'huawei':
-        output = huawei_telnet_int_des(current_ring[main_name]["ip"],
+        output = __huawei_telnet_int_des(current_ring[main_name]["ip"],
                                        current_ring[main_name]["user"],
                                        current_ring[main_name]["pass"])
         # print(main_name, target_name)
     if current_ring[main_name]["vendor"] == 'cisco':
-        output = cisco_telnet_int_des(current_ring[main_name]["ip"],
+        output = __cisco_telnet_int_des(current_ring[main_name]["ip"],
                                       current_ring[main_name]["user"],
                                       current_ring[main_name]["pass"])
 
     if current_ring[main_name]["vendor"] == 'd-link':
-        output = dlink_telnet_int_des(current_ring[main_name]["ip"],
+        output = __dlink_telnet_int_des(current_ring[main_name]["ip"],
                                       current_ring[main_name]["user"],
                                       current_ring[main_name]["pass"])
 
@@ -386,7 +370,7 @@ def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
                 return line[0]    # Интерфейс
 
 
-def set_port_status(current_ring: dict, device_name: str, interface_name: str, port_status: str):
+def __set_port_status2(current_ring: dict, device_name: str, interface_name: str, port_status: str):
     '''
     Заходим на оборудование через telnet и устанавливаем состояние конкретного порта
     :param current_ring"    Кольцо
@@ -415,7 +399,7 @@ def set_port_status(current_ring: dict, device_name: str, interface_name: str, p
                     telnet.sendline("sys")
                     print(f'    <{device_name}>system-view')
                 telnet.expect(']')
-                interface_name = give_me_interface_name(interface_name)
+                interface_name = interface_normal_view(interface_name)
                 telnet.sendline(f"interface {interface_name}")
                 print(f"    [{device_name}]interface {interface_name}")
                 telnet.expect(f'-{interface_name}]')
@@ -464,7 +448,7 @@ def set_port_status(current_ring: dict, device_name: str, interface_name: str, p
                     telnet.expect('#')
                 telnet.sendline('conf t')
                 telnet.expect('#')
-                interface_name = give_me_interface_name(interface_name)
+                interface_name = interface_normal_view(interface_name)
                 telnet.sendline(f"interface {interface_name}")
                 telnet.expect('#')
                 print(f"    {device_name}(config)#interface {interface_name}")
@@ -509,7 +493,7 @@ def set_port_status(current_ring: dict, device_name: str, interface_name: str, p
                 telnet.expect("[Pp]ass")
                 telnet.sendline('sevaccess')
                 telnet.expect('#')
-                interface_name = give_me_interface_name(interface_name)
+                interface_name = interface_normal_view(interface_name)
                 if port_status == 'down':
                     telnet.sendline(f'config ports {interface_name} medium_type fiber state disable')
                     print(f'    {device_name}config ports {interface_name} medium_type fiber state disable')
@@ -543,9 +527,9 @@ def delete_ring_from_deploying_list(ring_name):
         yaml.dump(rotated_rings, save_ring, default_flow_style=False)  # Переписываем файл
 
 
-def validation():
+def validation() -> bool:
     valid_1 = True
-    validation_text = f'Проверка файла {root_dir}/rings.yaml'
+    validation_text = f'Проверка файла {root_dir}/rings.yaml\n'
     try:
         with open(f'{root_dir}/rings.yaml', 'r') as rings_yaml:  # Чтение файла
             try:
@@ -554,71 +538,71 @@ def validation():
                     for ring in rings:
                         for dev in rings[ring]:
                             if len(dev.split()) > 1:
-                                validation_text += f'{ring} --> Имя узла сети должно быть записано в одно слово: {dev}'
+                                validation_text += f'{ring} --> Имя узла сети должно быть записано в одно слово: {dev}\n'
                                 valid_1 = False
-                            try:
-                                if not rings[ring][dev]['vendor']:
-                                    validation_text += f'{ring} --> {dev} | не указан vendor'
-                                    valid_1 = False
-                                if len(str(rings[ring][dev]['vendor']).split()) > 1:
-                                    validation_text += f'{ring} --> {dev} | '\
-                                                        f'vendor должен быть записан в одно слово: '\
-                                                        f'{rings[ring][dev]["vendor"]}'
-                                    valid_1 = False
-                            except:
-                                validation_text += f'{ring} --> {dev} | не указан vendor'
-                                valid_1 = False
+                            # try:
+                            #     if not rings[ring][dev]['vendor']:
+                            #         validation_text += f'{ring} --> {dev} | не указан vendor'
+                            #         valid_1 = False
+                            #     if len(str(rings[ring][dev]['vendor']).split()) > 1:
+                            #         validation_text += f'{ring} --> {dev} | '\
+                            #                             f'vendor должен быть записан в одно слово: '\
+                            #                             f'{rings[ring][dev]["vendor"]}'
+                            #         valid_1 = False
+                            # except:
+                            #     validation_text += f'{ring} --> {dev} | не указан vendor'
+                            #     valid_1 = False
 
                             try:
                                 if not rings[ring][dev]['user']:
-                                    validation_text += f'{ring} --> {dev} | не указан user'
+                                    validation_text += f'{ring} --> {dev} | не указан user\n'
                                     valid_1 = False
                                 if len(str(rings[ring][dev]['user']).split()) > 1:
                                     validation_text += f'{ring} --> {dev} | '\
                                                         f'user должен быть записан в одно слово: '\
-                                                        f'{rings[ring][dev]["user"]}'
+                                                        f'{rings[ring][dev]["user"]}\n'
                                     valid_1 = False
                             except:
-                                validation_text += f'{ring} --> {dev} | не указан user'
+                                validation_text += f'{ring} --> {dev} | не указан user\n'
                                 valid_1 = False
 
                             try:
                                 if not rings[ring][dev]['pass']:
-                                    validation_text += f'{ring} --> {dev} | не указан пароль'
+                                    validation_text += f'{ring} --> {dev} | не указан пароль\n'
                                     valid_1 = False
                                 if len(str(rings[ring][dev]['pass']).split()) > 1:
                                     validation_text += f'{ring} --> {dev} | '\
                                                         f'пароль должен быть записан в одно слово: '\
-                                                        f'{rings[ring][dev]["pass"]}'
+                                                        f'{rings[ring][dev]["pass"]}\n'
                                     valid_1 = False
                             except:
-                                validation_text += f'{ring} --> {dev} | не указан пароль'
+                                validation_text += f'{ring} --> {dev} | не указан пароль\n'
                                 valid_1 = False
 
                             try:
                                 if not rings[ring][dev]['ip']:
-                                    validation_text += f'{ring} --> {dev} | не указан IP'
+                                    validation_text += f'{ring} --> {dev} | не указан IP\n'
                                     valid_1 = False
                                 elif not bool(findall('\d{1,4}(\.\d{1,4}){3}', rings[ring][dev]['ip'])):
                                     validation_text += f'{ring} --> {dev} | '\
                                                         f'IP указан неверно: '\
-                                                        f'{rings[ring][dev]["ip"]}'
+                                                        f'{rings[ring][dev]["ip"]}\n'
                                     valid_1 = False
                             except:
-                                validation_text += f'{ring} --> {dev} | не указан IP'
+                                validation_text += f'{ring} --> {dev} | не указан IP\n'
                                 valid_1 = False
                 else:
-                    validation_text += f'Файл "{root_dir}/check.yaml" пуст!'
+                    validation_text += f'Файл "{root_dir}/check.yaml" пуст!\n'
                     valid_1 = False
             except Exception as e:
                 validation_text += str(e)
-                validation_text += '\nОшибка в синтаксисе!'
+                validation_text += '\nОшибка в синтаксисе!\n'
                 valid_1 = False
     except Exception as e:
         validation_text += str(e)
         valid_1 = False
 
-    validation_text += f'Проверка файла {root_dir}/rotated_rings.yaml'
+    validation_text += f'Проверка файла {root_dir}/rotated_rings.yaml\n'
     valid_2 = True
     try:
         with open(f'{root_dir}/rotated_rings.yaml', 'r') as rotated_rings_yaml:
@@ -630,76 +614,82 @@ def validation():
                             continue
                         try:
                             if not rotated_rings[ring]['admin_down_host']:
-                                validation_text += f'{ring} --> не указан admin_down_host (узел сети, где порт в состоянии admin down)'
+                                validation_text += f'{ring} --> не указан admin_down_host ' \
+                                                   f'(узел сети, где порт в состоянии admin down)\n'
                                 valid_2 = False
                             if len(str(rotated_rings[ring]['admin_down_host']).split()) > 1:
                                 validation_text += f'{ring} --> admin_down_host должен быть записан в одно слово: '\
-                                                    f'{rotated_rings[ring]["admin_down_host"]}'
+                                                    f'{rotated_rings[ring]["admin_down_host"]}\n'
                                 valid_2 = False
                         except:
-                            validation_text += f'{ring} --> не указан admin_down_host (узел сети, где порт в состоянии admin down)'
+                            validation_text += f'{ring} --> не указан admin_down_host ' \
+                                               f'(узел сети, где порт в состоянии admin down)\n'
                             valid_2 = False
 
                         try:
                             if not rotated_rings[ring]['admin_down_port']:
-                                validation_text += f'{ring} --> не указан admin_down_port (порт узла сети в состоянии admin down)'
+                                validation_text += f'{ring} --> не указан admin_down_port ' \
+                                                   f'(порт узла сети в состоянии admin down)/n'
                                 valid_2 = False
                         except:
-                            validation_text += f'{ring} --> не указан admin_down_port (порт узла сети в состоянии admin down)'
+                            validation_text += f'{ring} --> не указан admin_down_port ' \
+                                               f'(порт узла сети в состоянии admin down)\n'
                             valid_2 = False
 
                         try:
                             if not rotated_rings[ring]['admin_down_to']:
                                 validation_text += f'{ring} --> не указан admin_down_to '\
-                                      f'(узел сети, который находится непосредственно за узлом, у которого порт в состоянии admin down)'
+                                      f'(узел сети, который находится непосредственно за узлом,' \
+                                                   f' у которого порт в состоянии admin down)\n'
                                 valid_2 = False
                             if len(str(rotated_rings[ring]['admin_down_to']).split()) > 1:
                                 validation_text += f'{ring} --> admin_down_to должен быть записан в одно слово: '\
-                                                    f'{rotated_rings[ring]["admin_down_to"]}'
+                                                    f'{rotated_rings[ring]["admin_down_to"]}\n'
                                 valid_2 = False
                         except:
                             validation_text += f'{ring} --> не указан admin_down_to '\
-                                  f'(узел сети, который находится непосредственно за узлом, у которого порт в состоянии admin down)'
+                                  f'(узел сети, который находится непосредственно за узлом,' \
+                                               f' у которого порт в состоянии admin down)\n'
                             valid_2 = False
 
                         try:
                             if not rotated_rings[ring]['default_host']:
                                 validation_text += f'{ring} --> не указан default_host '\
-                                      f'(узел сети, который должен иметь статус порта admin down по умолчанию)'
+                                      f'(узел сети, который должен иметь статус порта admin down по умолчанию)/n'
                                 valid_2 = False
                             if len(str(rotated_rings[ring]['default_host']).split()) > 1:
                                 validation_text += f'{ring} --> default_host должен быть записан в одно слово: '\
-                                                    f'{rotated_rings[ring]["default_host"]}'
+                                                    f'{rotated_rings[ring]["default_host"]}/n'
                                 valid_2 = False
                         except:
                             validation_text += f'{ring} --> не указан default_host '\
-                                  f'(узел сети, который должен иметь статус порта admin down по умолчанию)'
+                                  f'(узел сети, который должен иметь статус порта admin down по умолчанию)/n'
                             valid_2 = False
 
                         try:
                             if not rotated_rings[ring]['default_port']:
                                 validation_text += f'{ring} --> не указан default_port '\
-                                      f'(порт узла сети, который должен иметь статус порта admin down по умолчанию)'
+                                      f'(порт узла сети, который должен иметь статус порта admin down по умолчанию)\n'
                                 valid_2 = False
                         except:
                             validation_text += f'{ring} --> не указан default_port '\
-                                  f'(порт узла сети, который должен иметь статус порта admin down по умолчанию)'
+                                  f'(порт узла сети, который должен иметь статус порта admin down по умолчанию)\n'
                             valid_2 = False
 
                         try:
                             if not rotated_rings[ring]['default_to']:
                                 validation_text += f'{ring} --> не указан default_to '\
                                       f'(узел сети, который находится непосредственно за узлом сети, '\
-                                      f'который должен иметь статус порта admin down по умолчанию)'
+                                      f'который должен иметь статус порта admin down по умолчанию)\n'
                                 valid_2 = False
                             if len(str(rotated_rings[ring]['default_to']).split()) > 1:
                                 validation_text += f'{ring} --> default_to должен быть записан в одно слово: '\
-                                                    f'{rotated_rings[ring]["default_to"]}'
+                                                    f'{rotated_rings[ring]["default_to"]}\n'
                                 valid_2 = False
                         except:
                             validation_text += f'{ring} --> не указан default_to '\
                                                 f'(узел сети, который находится непосредственно за узлом сети, '\
-                                                f'который должен иметь статус порта admin down по умолчанию)'
+                                                f'который должен иметь статус порта admin down по умолчанию)\n'
                             valid_2 = False
 
                         try:
@@ -708,10 +698,10 @@ def validation():
                                 valid_2 = False
                             if not isinstance(rotated_rings[ring]['priority'], int):
                                 validation_text += f'{ring} --> priority должен быть целочисленным числом: '\
-                                                    f'{rotated_rings[ring]["priority"]}'
+                                                    f'{rotated_rings[ring]["priority"]}\n'
                                 valid_2 = False
                         except:
-                            validation_text += f'{ring} --> не указан priority '
+                            validation_text += f'{ring} --> не указан priority \n'
                             valid_2 = False
                 else:
                     with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
@@ -720,7 +710,7 @@ def validation():
                     valid_2 = False
             except Exception as e:
                 validation_text += str(e)
-                validation_text += '\nОшибка в синтаксисе!'
+                validation_text += '\nОшибка в синтаксисе!\n'
                 valid_2 = False
     except Exception as e:
         validation_text += str(e)
@@ -746,7 +736,7 @@ def validation():
 
 
 def main(devices_ping: list, current_ring: dict, current_ring_list: list, current_ring_name: str,
-         this_is_the_second_loop: bool = False):
+         this_is_the_second_loop: bool = False) -> None:
     successor_name = ''
 
     for device_name, device_status in devices_ping:     # Листаем узлы сети и их доступность по "ping"
@@ -930,8 +920,8 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
         print("Все узлы сети из данного кольца недоступны!")        # ...конец кольца
 
 
-def start(dev: str):
-    current_ring, current_ring_list, current_ring_name = find_ring_by_device(dev)
+def start(dev: str) -> None:
+    current_ring, current_ring_list, current_ring_name = get_ring(dev)
 
     # Заголовок
     print('\n')
@@ -949,7 +939,7 @@ def start(dev: str):
                           f"(смотреть файл \"{root_dir}/rotated_rings.yaml\")")
                     sys.exit()  # Выход
 
-    devices_ping = ring_ping_status(current_ring)
+    devices_ping = ping_devices(current_ring)
 
     for _, available in devices_ping:
         if not available:
@@ -968,10 +958,404 @@ def start(dev: str):
     main(devices_ping, current_ring, current_ring_list, current_ring_name)
 
 
-def time_sleep(sec: int):
+def time_sleep(sec: int) -> None:
     for s in range(sec):
         print('.', end='', flush=True)
         time.sleep(1)
+
+
+def interfaces(current_ring: dict, checking_device_name: str):
+    '''
+    Подключаемся к оборудованию по telnet и считываем интерфейсы, их статусы и описание \n
+    :param current_ring:            Кольцо
+    :param checking_device_name:    Имя оборудования
+    :return:                        Список: интерфейс, статус, описание
+    '''
+    with pexpect.spawn(f"telnet {current_ring[checking_device_name]['ip']}") as telnet:
+        try:
+            if telnet.expect(["[Uu]ser", 'Unable to connect']):
+                print("    Telnet недоступен!")
+                return False
+            telnet.sendline(current_ring[checking_device_name]["user"])
+            print(f"    Login to {checking_device_name}")
+            telnet.expect("[Pp]ass")
+            telnet.sendline(current_ring[checking_device_name]["pass"])
+            print(f"    Pass to {checking_device_name}")
+            match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
+            if match == 3:
+                print('    Неверный логин или пароль!')
+                return False
+            else:
+                telnet.sendline('show version')
+                version = ''
+                while True:
+                    m = telnet.expect([']', '-More-', '>', '#'])
+                    version += str(telnet.before.decode('utf-8'))
+                    if m == 1:
+                        telnet.sendline(' ')
+                    else:
+                        break
+
+                # ZTE
+                if bool(findall(r' ZTE Corporation:', version)):
+                    print("    ZTE")
+
+                # Huawei
+                elif bool(findall(r'Unrecognized command', version)):
+                    print("    Huawei")
+                    telnet.sendline("dis int des")
+                    output = ''
+                    num = ''
+                    while True:
+                        match = telnet.expect(['Too many parameters', ']', "  ---- More ----", '>', pexpect.TIMEOUT])
+                        page = str(telnet.before.decode('utf-8')).replace("[42D", '')
+                        # page = re.sub(" +\x08+ +\x08+", "\n", page)
+                        output += page.strip()
+                        if match == 3:
+                            print("    got int des")
+                            telnet.sendline("quit")
+                            break
+                        elif match == 1:
+                            print("    got int des")
+                            telnet.sendline("quit")
+                            telnet.sendline("quit")
+                            break
+                        elif match == 2:
+                            telnet.send(" ")
+                            output += '\n'
+                        elif match == 0:
+                            telnet.expect('>')
+                            telnet.sendline('dis brief int')
+                            num = '2'
+                        else:
+                            print("    Ошибка: timeout")
+                            break
+                    telnet.sendline("quit")
+                    output = re.sub("\n +\n", "\n", output)
+                    with open(f'{root_dir}/templates/int_des_huawei{num}.template', 'r') as template_file:
+                        int_des_ = textfsm.TextFSM(template_file)
+                        result = int_des_.ParseText(output)  # Ищем интерфейсы
+                    return result
+
+                # Cisco
+                elif bool(findall(r'Cisco IOS', version)):
+                    print("    Cisco")
+                    if match == 1:
+                        telnet.sendline('enable')
+                        telnet.expect('[Pp]ass')
+                        telnet.sendline('sevaccess')
+                    telnet.expect('#')
+                    telnet.sendline("sh int des")
+                    output = ''
+                    while True:
+                        match = telnet.expect(['#', "--More--", pexpect.TIMEOUT])
+                        page = str(telnet.before.decode('utf-8')).replace("[42D", '')
+                        # page = re.sub(" +\x08+ +\x08+", "\n", page)
+                        output += page.strip()
+                        if match == 0:
+                            print("    got int des")
+                            telnet.sendline("exit")
+                            break
+                        elif match == 1:
+                            telnet.send(" ")
+                            output += '\n'
+                        else:
+                            print("    Ошибка: timeout")
+                            break
+                    output = re.sub("\n +\n", "\n", output)
+                    with open(f'{root_dir}/templates/int_des_cisco.template', 'r') as template_file:
+                        int_des_ = textfsm.TextFSM(template_file)
+                        result = int_des_.ParseText(output)  # Ищем интерфейсы
+                    return result
+
+                # D-Link
+                elif bool(findall(r'Next possible completions:', version)):
+                    print("    D-Link")
+                    telnet.sendline('enable admin')
+                    telnet.expect("[Pp]ass")
+                    telnet.sendline('sevaccess')
+                    telnet.expect('#')
+                    telnet.sendline('disable clipaging')
+                    telnet.expect('#')
+                    telnet.sendline("show ports des")
+                    telnet.expect('#')
+                    output = telnet.before.decode('utf-8')
+                    telnet.sendline('logout')
+                    with open(f'{root_dir}/templates/int_des_d-link.template', 'r') as template_file:
+                        int_des_ = textfsm.TextFSM(template_file)
+                        result = int_des_.ParseText(output)  # Ищем интерфейсы
+                    return result
+
+                # Alcatel, Linksys
+                elif bool(findall(r'SW version', version)):
+                    print("    Alcatel or Linksys")
+                    telnet.sendline('show interfaces configuration')
+                    port_state = ''
+                    while True:
+                        match = telnet.expect(['More: <space>', '#', pexpect.TIMEOUT])
+                        page = str(telnet.before.decode('utf-8'))
+                        port_state += page.strip()
+                        if match == 0:
+                            telnet.sendline(' ')
+                        elif match == 1:
+                            print("    got int state")
+                            break
+                        else:
+                            print("    Ошибка: timeout")
+                            break
+                    with open(f'{root_dir}/templates/int_des_alcatel_linksys.template', 'r') as template_file:
+                        int_des_ = textfsm.TextFSM(template_file)
+                        result_port_state = int_des_.ParseText(port_state)  # Ищем интерфейсы
+                    telnet.sendline('show int des')
+                    telnet.expect('#')
+                    port_desc = ''
+                    while True:
+                        match = telnet.expect(['More: <space>', '#', pexpect.TIMEOUT])
+                        page = str(telnet.before.decode('utf-8'))
+                        port_desc += page.strip()
+                        if match == 0:
+                            telnet.sendline(' ')
+                        elif match == 1:
+                            print("    got int des")
+                            telnet.sendline('exit')
+                            break
+                        else:
+                            print("    Ошибка: timeout")
+                            break
+                    with open(f'{root_dir}/templates/int_des_alcatel_linksys2.template', 'r') as template_file:
+                        int_des_ = textfsm.TextFSM(template_file)
+                        result_port_des = int_des_.ParseText(port_desc)  # Ищем интерфейсы
+                    result = []
+                    for line in result_port_state:
+                        for line2 in result_port_des:
+                            if line[0] == line2[0]:
+                                result.append([line[0], line[1], line2[1]])
+                    return result
+
+                # Edge-Core
+                elif bool(findall(r'Hardware version', version)):
+                    print("    Edge-Core")
+
+                # Zyxel
+                elif bool(findall(r'ZyNOS', version)):
+                    print("    Zyxel")
+                telnet.sendline('exit')
+
+        except pexpect.exceptions.TIMEOUT:
+            print("    Время ожидания превышено! (timeout)")
+
+
+def search_admin_down(current_ring: dict, current_ring_list: list, checking_device_name: str):
+    '''
+    Ищет есть ли у данного узла сети порт(ы) в состоянии "admin down" в сторону другого узла сети из этого кольца.
+    Проверка осуществляется по наличию в description'е имени узла сети из текущего кольца.
+
+    :param current_ring:         Кольцо
+    :param current_ring_list:    Список узлов сети в кольце
+    :param checking_device_name: Имя узла сети
+    :return:    В случае успеха возвращает имя оборудования с портом(ми) "admin down" и имя оборудования к которому
+                ведет этот порт и интерфейс. Если нет портов "admin down", то возвращает "False"
+    '''
+    print("---- def search_admin_down ----")
+
+    result = interfaces(current_ring, checking_device_name)
+    ad_to_this_host = []  # имя оборудования к которому ведет порт "admin down"
+    ad_interface = []
+    # print(result)
+    if result:  # Если найден admin_down, то...
+        for dev_name in current_ring_list:  # ...перебираем узлы сети в кольце:
+            for res_line in result:  # Перебираем все найденные интерфейсы:
+                if bool(findall(dev_name, res_line[2])) and (
+                        bool(findall(r'(admin down|\*down|Down|Disabled|ADM DOWN)', res_line[1]))):
+                    # ...это хост, к которому закрыт порт от проверяемого коммутатора
+                    ad_to_this_host.append(dev_name)
+                    ad_interface.append(res_line[0])  # интерфейс со статусом "admin down"
+                    # print(checking_device_name, ad_to_this_host, ad_interface)
+    if ad_to_this_host and ad_interface:
+        return checking_device_name, ad_to_this_host, ad_interface
+    else:
+        return False
+
+
+def interface_normal_view(interface):
+    '''
+    Приводит имя интерфейса к общепринятому виду \n
+    Например: Eth 0/1 -> Ethernet0/1 \n
+    :param interface:   Интерфейс в сыром виде (raw)
+    :return:            Интерфейс в общепринятом виде
+    '''
+    interface = str(interface)
+    interface_number = findall(r"(\d+([\/\\]?\d*)*)", str(interface))
+    if bool(findall('^[Ee]', interface)):
+        return f"Ethernet{interface_number[0][0]}"
+    elif bool(findall('^[Ff]', interface)):
+        return f"FastEthernet{interface_number[0][0]}"
+    elif bool(findall('^[Gg]', interface)):
+        return f"GigabitEthernet{interface_number[0][0]}"
+    elif bool(findall('^\d', interface)):
+        return findall('^\d+', interface)[0]
+
+
+def set_port_status(current_ring: dict, device: str, interface: str, status: str):
+    '''
+    Заходим на оборудование через telnet и устанавливаем состояние конкретного порта
+    :param current_ring"    Кольцо
+    :param device:          Имя узла сети, с которым необходимо взаимодействовать
+    :param interface:       Интерфейс узла сети
+    :param status:          "up": поднять порт, "down": положить порт
+    :return:                В случае успеха возвращает 1, неудачи - 0
+    '''
+    print("---- def set_port_status ----")
+    with pexpect.spawn(f"telnet {current_ring[device]['ip']}") as telnet:
+        try:
+            if telnet.expect(["[Uu]ser", 'Unable to connect']):
+                print("    Telnet недоступен!")
+                return False
+            telnet.sendline(current_ring[device]["user"])
+            print(f"    Login to {device}")
+            telnet.expect("[Pp]ass")
+            telnet.sendline(current_ring[device]["pass"])
+            print(f"    Pass to {device}")
+            match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
+            if match == 3:
+                print('    Неверный логин или пароль!')
+                return False
+            else:
+                telnet.sendline('show version')
+                version = ''
+                while True:
+                    m = telnet.expect([']', '-More-', '>', '#'])
+                    version += str(telnet.before.decode('utf-8'))
+                    if m == 1:
+                        telnet.sendline(' ')
+                    else:
+                        break
+
+                # ZTE
+                if bool(findall(r' ZTE Corporation:', version)):
+                    print("    ZTE")
+
+                # Huawei
+                elif bool(findall(r'Error: Unrecognized command', version)):
+                    if match == 1:
+                        telnet.sendline("sys")
+                        print(f'    <{device}>system-view')
+                    telnet.expect(']')
+                    interface = interface_normal_view(interface)
+                    telnet.sendline(f"interface {interface}")
+                    print(f"    [{device}]interface {interface}")
+                    telnet.expect(f'-{interface}]')
+                    if status == 'down':
+                        telnet.sendline('sh')
+                        print(f'    [{device}-{interface}]shutdown')
+                    elif status == 'up':
+                        telnet.sendline('undo sh')
+                        print(f'    [{device}-{interface}]undo shutdown')
+                    telnet.expect(f'-{interface}]')
+                    telnet.sendline('quit')
+                    telnet.expect(']')
+                    telnet.sendline('quit')
+                    telnet.expect('>')
+                    telnet.sendline('save')
+                    telnet.expect(']')
+                    telnet.sendline('Y')
+                    telnet.expect('>')
+                    print('    configuration saved!')
+                    telnet.sendline('quit')
+                    print('    QUIT\n')
+                    return 1
+
+                # Cisco
+                elif bool(findall(r'Cisco IOS', version)):
+                    if match == 1:
+                        telnet.sendline("enable")
+                        print(f'    <{device}>enable')
+                        telnet.expect('[Pp]assword')
+                        telnet.sendline('sevaccess')
+                        telnet.expect('#')
+                    telnet.sendline('conf t')
+                    telnet.expect('#')
+                    interface = interface_normal_view(interface)
+                    telnet.sendline(f"interface {interface}")
+                    telnet.expect('#')
+                    print(f"    {device}(config)#interface {interface}")
+                    if status == 'down':
+                        telnet.sendline('sh')
+                        print(f'    {device}(config-if)#shutdown')
+                    elif status == 'up':
+                        telnet.sendline('no sh')
+                        print(f'    {device}(config-if)#no shutdown')
+                    telnet.expect(f'#')
+                    telnet.sendline('exit')
+                    telnet.expect('#')
+                    telnet.sendline('exit')
+                    telnet.expect('#')
+                    telnet.sendline('write')
+                    if telnet.expect(['[OoKk]', '#']) == 0:
+                        print("    Saved!")
+                    else:
+                        print("    Don't saved!")
+                    telnet.sendline('exit')
+                    print('    QUIT\n')
+                    return 1
+
+                # D-Link
+                elif bool(findall(r'Next possible completions:', version)):
+                    telnet.sendline('enable admin')
+                    telnet.expect("[Pp]ass")
+                    telnet.sendline('sevaccess')
+                    telnet.expect('#')
+                    interface = interface_normal_view(interface)
+                    if status == 'down':
+                        telnet.sendline(f'config ports {interface} medium_type fiber state disable')
+                        print(f'    {device}config ports {interface} medium_type fiber state disable')
+                        telnet.sendline(f'config ports {interface} medium_type copper state disable')
+                        print(f'    {device}config ports {interface} medium_type copper state disable')
+                    elif status == 'up':
+                        telnet.sendline(f'config ports {interface} medium_type fiber state enable')
+                        print(f'    {device}config ports {interface} medium_type fiber state enable')
+                        telnet.sendline(f'config ports {interface} medium_type copper state enable')
+                        print(f'    {device}config ports {interface} medium_type copper state enable')
+                    telnet.expect('#')
+                    telnet.sendline('save')
+                    if telnet.expect(['Success', '#']):
+                        print("    Don't saved!")
+                    else:
+                        print("    Saved!")
+                    telnet.sendline('logout')
+                    print('    QUIT\n')
+                    return 1
+
+                # Alcatel, Linksys
+                elif bool(findall(r'SW version', version)):
+                    pass
+
+                # Edge-Core
+                elif bool(findall(r'Hardware version', version)):
+                    print("    Edge-Core")
+
+                # Zyxel
+                elif bool(findall(r'ZyNOS', version)):
+                    print("    Zyxel")
+                telnet.sendline('exit')
+
+        except pexpect.exceptions.TIMEOUT:
+            print("    Время ожидания превышено! (timeout)")
+
+
+def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
+    '''
+    Поиск интерфейса с description имеющим в себе имя другого оборудования \n
+    :param current_ring: Кольцо
+    :param main_name:   Узел сети, где ищем
+    :param target_name: Узел сети, который ищем
+    :return:            Интерфейс
+    '''
+    print("---- def find_port_by_desc ----")
+    result = interfaces(current_ring, main_name)
+    for line in result:
+        if bool(findall(target_name, line[2])):  # Ищем строку, где в description содержится "target_name"
+            return line[0]    # Интерфейс
 
 
 if __name__ == '__main__':

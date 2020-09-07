@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     dev = sys.argv[1]
 
-    current_ring, current_ring_list, current_ring_name = motr.find_ring_by_device(dev)
+    current_ring, current_ring_list, current_ring_name = motr.get_ring(dev)
 
     if not motr.validation():
         email.send_text('Ошибка в развороте колец!', 'Файл(ы) структуры колец')
@@ -47,7 +47,7 @@ if __name__ == '__main__':
             print('Кольцо не находится в списке колец требуемых к развороту "по умолчанию"')
             sys.exit()      # Выход
 
-    devices_ping = motr.ring_ping_status(current_ring)
+    devices_ping = motr.ping_devices(current_ring)
 
     for device_name, device_status in devices_ping:
         if not device_status:
