@@ -595,13 +595,12 @@ def interfaces(current_ring: dict, checking_device_name: str):
                 telnet.sendline('show version')
                 version = ''
                 while True:
-                    m = telnet.expect([r']$', '-More-', r'>$', r'#$'])
+                    m = telnet.expect([r']$', '-More-', r'>$', r'#'])
                     version += str(telnet.before.decode('utf-8'))
                     if m == 1:
                         telnet.sendline(' ')
                     else:
                         break
-
                 # ZTE
                 if bool(findall(r' ZTE Corporation:', version)):
                     print("    ZTE")
@@ -618,7 +617,6 @@ def interfaces(current_ring: dict, checking_device_name: str):
                         # page = re.sub(" +\x08+ +\x08+", "\n", page)
                         output += page.strip()
                         if match == 3:
-                            print("    got int des")
                             telnet.sendline("quit")
                             break
                         elif match == 1:
@@ -655,11 +653,11 @@ def interfaces(current_ring: dict, checking_device_name: str):
                     output = ''
                     while True:
                         match = telnet.expect([r'#$', "--More--", pexpect.TIMEOUT])
-                        page = str(telnet.before.decode('utf-8')).replace("[42D", '')
+                        page = str(telnet.before.decode('utf-8')).replace("[42D", '').replace(
+                            "        ", '')
                         # page = re.sub(" +\x08+ +\x08+", "\n", page)
                         output += page.strip()
                         if match == 0:
-                            print("    got int des")
                             telnet.sendline("exit")
                             break
                         elif match == 1:
@@ -704,7 +702,6 @@ def interfaces(current_ring: dict, checking_device_name: str):
                         if match == 0:
                             telnet.sendline(' ')
                         elif match == 1:
-                            print("    got int state")
                             break
                         else:
                             print("    Ошибка: timeout")
@@ -722,7 +719,6 @@ def interfaces(current_ring: dict, checking_device_name: str):
                         if match == 0:
                             telnet.sendline(' ')
                         elif match == 1:
-                            print("    got int des")
                             telnet.sendline('exit')
                             break
                         else:
@@ -865,8 +861,9 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                     telnet.sendline('save')
                     telnet.expect(']')
                     telnet.sendline('Y')
-                    telnet.expect('>')
-                    print('    configuration saved!')
+                    if telnet.expect('>', 'Please input the file name'):
+                        if telnet.expect('>', 'successfully'):
+                            print('    configuration saved!')
                     telnet.sendline('quit')
                     print('    QUIT\n')
                     return 1
@@ -1044,13 +1041,16 @@ if __name__ == '__main__':
         if len(sys.argv) == 3:
             if sys.argv[2] == '--check':
                 current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
+                print(f'{current_ring_name}\n')
                 devices_ping = ping_devices(current_ring)
                 for device in current_ring_list:
                     for d, s in devices_ping:
                         if device == d and s:
                             print(search_admin_down(current_ring, current_ring_list, device))
-            elif sys.argv[2] == '--show-int':
+
+            elif sys.argv[2] == '--show-all':
                 current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
+                print(f'{current_ring_name}\n')
                 devices_ping = ping_devices(current_ring)
                 for device in current_ring_list:
                     for d, s in devices_ping:
@@ -1059,7 +1059,22 @@ if __name__ == '__main__':
                             if sh:
                                 for line in sh:
                                     print(line)
+                                else:
+                                    print('\n')
                             else:
-                                print(sh)
+                                print(sh, '\n')
+
+            elif sys.argv[2] == '--show-int':
+                current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
+                print(f'{current_ring_name}\n')
+                sh = interfaces(current_ring, sys.argv[1])
+                if sh:
+                    for line in sh:
+                        print(line)
+                    else:
+                        print('\n')
+                else:
+                    print(sh, '\n')
+
         else:
             start(sys.argv[1])
