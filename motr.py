@@ -676,9 +676,9 @@ def interfaces(current_ring: dict, checking_device_name: str):
                 elif bool(findall(r'Next possible completions:', version)):
                     print("    D-Link")
                     telnet.sendline('enable admin')
-                    telnet.expect("[Pp]ass")
-                    telnet.sendline('sevaccess')
-                    telnet.expect('#')
+                    if telnet.expect("You already have the administrator's privilege!", "[Pp]ass"):
+                        telnet.sendline('sevaccess')
+                        telnet.expect('#')
                     telnet.sendline('disable clipaging')
                     telnet.expect('#')
                     telnet.sendline("show ports des")
