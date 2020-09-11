@@ -544,7 +544,7 @@ def start(dev: str) -> None:
                 if current_ring_name == rring:
                     print(f"Кольцо, к которому принадлежит узел сети {dev} уже находится в списке как развернутое\n"
                           f"(смотреть файл \"{root_dir}/rotated_rings.yaml\")")
-                    sys.exit()  # Выход
+                    return False # Выход
 
     devices_ping = ping_devices(current_ring)
 
@@ -553,14 +553,14 @@ def start(dev: str) -> None:
             break
     else:
         print("Все устройства в кольце доступны, разворот не требуется!")
-        sys.exit()
+        return False
 
     for _, available in devices_ping:
         if available:
             break
     else:
         print("Все устройства в кольце недоступны, разворот невозможен!")
-        sys.exit()
+        return False
 
     main(devices_ping, current_ring, current_ring_list, current_ring_name)
 
@@ -676,7 +676,7 @@ def interfaces(current_ring: dict, checking_device_name: str):
                 elif bool(findall(r'Next possible completions:', version)):
                     print("    D-Link")
                     telnet.sendline('enable admin')
-                    if telnet.expect("You already have the administrator's privilege!", "[Pp]ass"):
+                    if telnet.expect(["#", "[Pp]ass"]):
                         telnet.sendline('sevaccess')
                         telnet.expect('#')
                     telnet.sendline('disable clipaging')
@@ -1030,51 +1030,219 @@ def get_rings():
     return [i for i in set(rings_files)]
 
 
+def print_help():
+    print('''
+Usage: motr.py [-D device] [options]
+    -D              Device name
+    --device        Device name
+   
+Options:
+    --check         Search admin down on each devices in ring
+    --stat          Show information about rings
+    --show-int      Show interfaces of device
+    --show-all      Show interfaces of all devices in ring
+    --show-ping     Show ping
+    ''')
+
+
+def neighbors(current_ring: dict, checking_device_name: str):
+    with pexpect.spawn(f"telnet {current_ring[checking_device_name]['ip']}") as telnet:
+        try:
+            if telnet.expect(["[Uu]ser", 'Unable to connect']):
+                print("    Telnet недоступен!")
+                return False
+            telnet.sendline(current_ring[checking_device_name]["user"])
+            print(f"    Login to {checking_device_name} {current_ring[checking_device_name]['ip']}")
+            telnet.expect("[Pp]ass")
+            telnet.sendline(current_ring[checking_device_name]["pass"])
+            match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
+            if match == 3:
+                print('    Неверный логин или пароль!')
+                return False
+            else:
+                telnet.sendline('show version')
+                version = ''
+                while True:
+                    m = telnet.expect([r']$', '-More-', r'>$', r'#'])
+                    version += str(telnet.before.decode('utf-8'))
+                    if m == 1:
+                        telnet.sendline(' ')
+                    else:
+                        break
+                # ZTE
+                if bool(findall(r' ZTE Corporation:', version)):
+                    print("    ZTE")
+
+                # Huawei
+                elif bool(findall(r'Unrecognized command', version)):
+                    print("    Huawei")
+                    telnet.sendline("dis ndp")
+                    output = ''
+                    while True:
+                        match = telnet.expect(['Too many parameters', ']', "  ---- More ----", '>', pexpect.TIMEOUT])
+                        page = str(telnet.before.decode('utf-8')).replace("[42D", '')
+                        # page = re.sub(" +\x08+ +\x08+", "\n", page)
+                        output += page.strip()
+                        if match == 3:
+                            telnet.sendline("quit")
+                            break
+                        elif match == 1:
+                            print("    got int des")
+                            telnet.sendline("quit")
+                            telnet.sendline("quit")
+                            break
+                        elif match == 2:
+                            telnet.send(" ")
+                            output += '\n'
+                        elif match == 0:
+                            telnet.expect('>')
+                            telnet.sendline('dis brief int')
+                        else:
+                            print("    Ошибка: timeout")
+                            break
+                    telnet.sendline("quit")
+                    output = re.sub("\n +\n", "\n", output)
+                    print(output)
+                    with open(f'{root_dir}/templates/neighbors_huawei.template', 'r') as template_file:
+                        int_des_ = textfsm.TextFSM(template_file)
+                        result = int_des_.ParseText(output)  # Ищем интерфейсы
+                    return result
+
+                # Cisco
+                elif bool(findall(r'Cisco IOS', version)):
+                    print("    Cisco")
+                    if match == 1:
+                        telnet.sendline('enable')
+                        telnet.expect('[Pp]ass')
+                        telnet.sendline('sevaccess')
+                    telnet.expect('#')
+                    telnet.sendline("")
+
+                # D-Link
+                elif bool(findall(r'Next possible completions:', version)):
+                    print("    D-Link")
+                    telnet.sendline('enable admin')
+                    if telnet.expect(["#", "[Pp]ass"]):
+                        telnet.sendline('sevaccess')
+                        telnet.expect('#')
+                    telnet.sendline('disable clipaging')
+                    telnet.expect('#')
+                    telnet.sendline("")
+
+
+                # Alcatel, Linksys
+                elif bool(findall(r'SW version', version)):
+                    print("    Alcatel or Linksys")
+                    telnet.sendline('')
+
+                # Edge-Core
+                elif bool(findall(r'Hardware version', version)):
+                    print("    Edge-Core")
+
+                # Zyxel
+                elif bool(findall(r'ZyNOS', version)):
+                    print("    Zyxel")
+                telnet.sendline('exit')
+
+        except pexpect.exceptions.TIMEOUT:
+            print("    Время ожидания превышено! (timeout)")
+
+
+def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
+    valid = True
+    for device in dev_list:
+        des_num = 0
+        print('')
+        for d, s in dev_status:
+            if device == d and s:
+                intf = interfaces(ring, device)
+                double_list = dev_list + dev_list
+                for line in intf:
+                    if bool(findall(double_list[double_list.index(device)-1], line[2])):
+                        print(f'Сосед сверху: {double_list[double_list.index(device)-1]}')
+                        des_num += 1
+                    if bool(findall(double_list[double_list.index(device)+1], line[2])):
+                        print(f'Сосед снизу: {double_list[double_list.index(device)+1]}')
+                        des_num += 1
+        if des_num < 2:
+            valid = False
+    return valid
+
+
 if __name__ == '__main__':
 
     if len(sys.argv) == 1:
-        print("Не указано имя узла сети!")
+        print_help()
         sys.exit()
     get_config()
 
     if validation(rings_files):
-        if len(sys.argv) == 3:
-            if sys.argv[2] == '--check':
-                current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
-                print(f'{current_ring_name}\n')
-                devices_ping = ping_devices(current_ring)
-                for device in current_ring_list:
-                    for d, s in devices_ping:
-                        if device == d and s:
-                            print(search_admin_down(current_ring, current_ring_list, device))
+        for i, key in enumerate(sys.argv):
+            if key == '--stat':
+                rings_count = 0
+                devices_count = 0
+                for file in rings_files:
+                    with open(file, 'r') as ff:
+                        rings = yaml.safe_load(ff)  # Перевод из yaml в словарь
+                    rings_count += len(rings)
+                    devrc = 0
+                    for r in rings:
+                        devrc += len(rings[r])
+                    devices_count += devrc
+                    print(f'rings: {len(rings)} devices: {devrc:<4} in file: {file}')
+                print(f"\ntotal rings count: {rings_count}"
+                      f"\ntotal devices count {devices_count}")
+            if key == '-D' or key == '--device':
+                if len(sys.argv) > i+1:
+                    if len(sys.argv) > i+2 and sys.argv[i+2] == '--check':
+                        current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
+                        print(f'{current_ring_name}\n')
+                        devices_ping = ping_devices(current_ring)
+                        for device in current_ring_list:
+                            for d, s in devices_ping:
+                                if device == d and s:
+                                    print(search_admin_down(current_ring, current_ring_list, device))
 
-            elif sys.argv[2] == '--show-all':
-                current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
-                print(f'{current_ring_name}\n')
-                devices_ping = ping_devices(current_ring)
-                for device in current_ring_list:
-                    for d, s in devices_ping:
-                        if device == d and s:
-                            sh = interfaces(current_ring, device)
-                            if sh:
-                                for line in sh:
-                                    print(line)
-                                else:
-                                    print('\n')
+                    elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-all':
+                        current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
+                        print(f'{current_ring_name}\n')
+                        devices_ping = ping_devices(current_ring)
+                        for device in current_ring_list:
+                            for d, s in devices_ping:
+                                if device == d and s:
+                                    sh = interfaces(current_ring, device)
+                                    if sh:
+                                        for line in sh:
+                                            print(line)
+                                        else:
+                                            print('\n')
+                                    else:
+                                        print(sh, '\n')
+
+                    elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-int':
+                        current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
+                        print(f'{current_ring_name}\n')
+                        sh = interfaces(current_ring, sys.argv[i+1])
+                        if sh:
+                            for line in sh:
+                                print(line)
                             else:
-                                print(sh, '\n')
+                                print('\n')
+                        else:
+                            print(sh, '\n')
 
-            elif sys.argv[2] == '--show-int':
-                current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[1])
-                print(f'{current_ring_name}\n')
-                sh = interfaces(current_ring, sys.argv[1])
-                if sh:
-                    for line in sh:
-                        print(line)
+                    elif len(sys.argv) > i+2 and sys.argv[i+2] == '--check-des':
+                        current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
+                        print(f'{current_ring_name}\n')
+                        devices_ping = ping_devices(current_ring)
+                        v = check_descriptions(current_ring, current_ring_list, devices_ping)
+                        if v:
+                            print('\nПроверка пройдена успешно - OK!')
+                        else:
+                            print('\nПроверьте descriptions - Failed!')
                     else:
-                        print('\n')
+                        start(sys.argv[i+1])
                 else:
-                    print(sh, '\n')
-
-        else:
-            start(sys.argv[1])
+                    print_help()
+            if len(sys.argv) == 1:
+                print_help()
