@@ -118,10 +118,10 @@ def ping_devices(ring: dict):
         result = subprocess.run(['ping', '-c', '3', '-n', ip], stdout=subprocess.DEVNULL)
         if not result.returncode:  # Проверка на доступность: 0 - доступен, 1 и 2 - недоступен
             status.append((device, True))
-            print(f"    {device} available: True")
+            print(f"    \033[32mTrue\033[0m    \033[34m{device}\033[0m")
         else:
             status.append((device, False))
-            print(f"    {device} available: False")
+            print(f"    \033[31m\033[5mFalse\033[0m   {device}")
 
     with ThreadPoolExecutor(max_workers=10) as executor:    # Многопоточность
         for device in ring:
@@ -581,15 +581,15 @@ def interfaces(current_ring: dict, checking_device_name: str):
     with pexpect.spawn(f"telnet {current_ring[checking_device_name]['ip']}") as telnet:
         try:
             if telnet.expect(["[Uu]ser", 'Unable to connect']):
-                print("    Telnet недоступен!")
+                print("    \033[31mTelnet недоступен!\033[0m")
                 return False
             telnet.sendline(current_ring[checking_device_name]["user"])
-            print(f"    Login to {checking_device_name} {current_ring[checking_device_name]['ip']}")
+            print(f"    Login to \033[34m{checking_device_name}\033[0m {current_ring[checking_device_name]['ip']}")
             telnet.expect("[Pp]ass")
             telnet.sendline(current_ring[checking_device_name]["pass"])
             match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
             if match == 3:
-                print('    Неверный логин или пароль!')
+                print('    \033[31mНеверный логин или пароль!\033[0m')
                 return False
             else:
                 telnet.sendline('show version')
@@ -744,7 +744,7 @@ def interfaces(current_ring: dict, checking_device_name: str):
                 telnet.sendline('exit')
 
         except pexpect.exceptions.TIMEOUT:
-            print("    Время ожидания превышено! (timeout)")
+            print("    \033[31mВремя ожидания превышено! (timeout)\033[0m")
 
 
 def search_admin_down(current_ring: dict, current_ring_list: list, checking_device_name: str):
@@ -1159,10 +1159,10 @@ def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
                 double_list = dev_list + dev_list
                 for line in intf:
                     if bool(findall(double_list[double_list.index(device)-1], line[2])):
-                        print(f'Сосед сверху: {double_list[double_list.index(device)-1]}')
+                        print(f'Сосед сверху: \033[33m{double_list[double_list.index(device)-1]}\033[0m')
                         des_num += 1
                     if bool(findall(double_list[double_list.index(device)+1], line[2])):
-                        print(f'Сосед снизу: {double_list[double_list.index(device)+1]}')
+                        print(f'Сосед снизу: \033[33m{double_list[double_list.index(device)+1]}\033[0m')
                         des_num += 1
         if des_num < 2:
             valid = False
@@ -1178,6 +1178,9 @@ if __name__ == '__main__':
 
     if validation(rings_files):
         for i, key in enumerate(sys.argv):
+            if key == '-h' or key == '--help':
+                print_help()
+
             if key == '--stat':
                 rings_count = 0
                 devices_count = 0
@@ -1190,22 +1193,34 @@ if __name__ == '__main__':
                         devrc += len(rings[r])
                     devices_count += devrc
                     print(f'rings: {len(rings)} devices: {devrc:<4} in file: {file}')
-                print(f"\ntotal rings count: {rings_count}"
-                      f"\ntotal devices count {devices_count}")
+                print(f"\n\033[4mtotal rings count\033[0m:\033[0m \033[32m{rings_count}\033[0m"
+                      f"\n\033[4mtotal devices count\033[0m: \033[32m{devices_count}\033[0m")
+
+            if key == '--show-conf':
+                print(f'Файл конфигурации: \033[32m{root_dir}/config.conf\033[0m\n')
+                config = configparser.ConfigParser()
+                config.read(f'{root_dir}/config.conf')
+                print(f'    email_notification = \033[34m{config.get("Settings", "email_notification")}\033[0m')
+                print(f'    rings_directory = \033[34m{config.get("Settings", "rings_directory")}\033[0m\n')
+
             if key == '-D' or key == '--device':
                 if len(sys.argv) > i+1:
                     if len(sys.argv) > i+2 and sys.argv[i+2] == '--check':
                         current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
-                        print(f'{current_ring_name}\n')
+                        print(f'    \033[32m{current_ring_name}\033[0m\n')
                         devices_ping = ping_devices(current_ring)
                         for device in current_ring_list:
                             for d, s in devices_ping:
                                 if device == d and s:
-                                    print(search_admin_down(current_ring, current_ring_list, device))
+                                    ad = search_admin_down(current_ring, current_ring_list, device)
+                                    if not ad:
+                                        print(f'\033[33mNo admin down\033[0m')
+                                    else:
+                                        print(f'\033[32m{ad}\033[0m')
 
                     elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-all':
                         current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
-                        print(f'{current_ring_name}\n')
+                        print(f'    \033[32m{current_ring_name}\033[0m\n')
                         devices_ping = ping_devices(current_ring)
                         for device in current_ring_list:
                             for d, s in devices_ping:
@@ -1221,7 +1236,7 @@ if __name__ == '__main__':
 
                     elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-int':
                         current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
-                        print(f'{current_ring_name}\n')
+                        print(f'    \033[32m{current_ring_name}\033[0m\n')
                         sh = interfaces(current_ring, sys.argv[i+1])
                         if sh:
                             for line in sh:
@@ -1233,13 +1248,14 @@ if __name__ == '__main__':
 
                     elif len(sys.argv) > i+2 and sys.argv[i+2] == '--check-des':
                         current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
-                        print(f'{current_ring_name}\n')
+                        print(f'    \033[32m{current_ring_name}\033[0m\n')
                         devices_ping = ping_devices(current_ring)
                         v = check_descriptions(current_ring, current_ring_list, devices_ping)
                         if v:
-                            print('\nПроверка пройдена успешно - OK!')
+                            print('\n\033[32m Проверка пройдена успешно - OK!\033[0m')
                         else:
-                            print('\nПроверьте descriptions - Failed!')
+                            print('\n\033[31m Проверьте descriptions - Failed!\033[0m')
+
                     else:
                         start(sys.argv[i+1])
                 else:
