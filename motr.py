@@ -574,25 +574,29 @@ def time_sleep(sec: int) -> None:
         time.sleep(1)
 
 
-def interfaces(current_ring: dict, checking_device_name: str):
+def interfaces(current_ring: dict, checking_device_name: str, enable_print=True):
     '''
     Подключаемся к оборудованию по telnet и считываем интерфейсы, их статусы и описание \n
     :param current_ring:            Кольцо
     :param checking_device_name:    Имя оборудования
+    :param enable_print:            По умолчанию вывод в консоль включен
     :return:                        Список: интерфейс, статус, описание
     '''
     with pexpect.spawn(f"telnet {current_ring[checking_device_name]['ip']}") as telnet:
         try:
             if telnet.expect(["[Uu]ser", 'Unable to connect']):
-                print("    \033[31mTelnet недоступен!\033[0m")
+                if enable_print:
+                    print("    \033[31mTelnet недоступен!\033[0m")
                 return False
             telnet.sendline(current_ring[checking_device_name]["user"])
-            print(f"    Login to \033[34m{checking_device_name}\033[0m {current_ring[checking_device_name]['ip']}")
+            if enable_print:
+                print(f"    Login to \033[34m{checking_device_name}\033[0m {current_ring[checking_device_name]['ip']}")
             telnet.expect("[Pp]ass")
             telnet.sendline(current_ring[checking_device_name]["pass"])
             match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
             if match == 3:
-                print('    \033[31mНеверный логин или пароль!\033[0m')
+                if enable_print:
+                    print('    \033[31mНеверный логин или пароль!\033[0m')
                 return False
             else:
                 telnet.sendline('show version')
@@ -606,11 +610,13 @@ def interfaces(current_ring: dict, checking_device_name: str):
                         break
                 # ZTE
                 if bool(findall(r' ZTE Corporation:', version)):
-                    print("    ZTE")
+                    if enable_print:
+                        print("    ZTE")
 
                 # Huawei
                 elif bool(findall(r'Unrecognized command', version)):
-                    print("    Huawei")
+                    if enable_print:
+                        print("    Huawei")
                     telnet.sendline("dis int des")
                     output = ''
                     num = ''
@@ -623,7 +629,6 @@ def interfaces(current_ring: dict, checking_device_name: str):
                             telnet.sendline("quit")
                             break
                         elif match == 1:
-                            print("    got int des")
                             telnet.sendline("quit")
                             telnet.sendline("quit")
                             break
@@ -640,7 +645,8 @@ def interfaces(current_ring: dict, checking_device_name: str):
                             num = '2'
                             output = ''
                         else:
-                            print("    Ошибка: timeout")
+                            if enable_print:
+                                print("    Ошибка: timeout")
                             break
                     telnet.sendline("quit")
                     output = re.sub("\n +\n", "\n", output)
@@ -651,7 +657,8 @@ def interfaces(current_ring: dict, checking_device_name: str):
 
                 # Cisco
                 elif bool(findall(r'Cisco IOS', version)):
-                    print("    Cisco")
+                    if enable_print:
+                        print("    Cisco")
                     if match == 1:
                         telnet.sendline('enable')
                         telnet.expect('[Pp]ass')
@@ -672,7 +679,8 @@ def interfaces(current_ring: dict, checking_device_name: str):
                             telnet.send(" ")
                             output += '\n'
                         else:
-                            print("    Ошибка: timeout")
+                            if enable_print:
+                                print("    Ошибка: timeout")
                             break
                     output = re.sub("\n +\n", "\n", output)
                     with open(f'{root_dir}/templates/int_des_cisco.template', 'r') as template_file:
@@ -682,7 +690,8 @@ def interfaces(current_ring: dict, checking_device_name: str):
 
                 # D-Link
                 elif bool(findall(r'Next possible completions:', version)):
-                    print("    D-Link")
+                    if enable_print:
+                        print("    D-Link")
                     telnet.sendline('enable admin')
                     if telnet.expect(["#", "[Pp]ass"]):
                         telnet.sendline('sevaccess')
@@ -700,7 +709,8 @@ def interfaces(current_ring: dict, checking_device_name: str):
 
                 # Alcatel, Linksys
                 elif bool(findall(r'SW version', version)):
-                    print("    Alcatel or Linksys")
+                    if enable_print:
+                        print("    Alcatel or Linksys")
                     telnet.sendline('show interfaces configuration')
                     port_state = ''
                     while True:
@@ -712,7 +722,8 @@ def interfaces(current_ring: dict, checking_device_name: str):
                         elif match == 1:
                             break
                         else:
-                            print("    Ошибка: timeout")
+                            if enable_print:
+                                print("    Ошибка: timeout")
                             break
                     with open(f'{root_dir}/templates/int_des_alcatel_linksys.template', 'r') as template_file:
                         int_des_ = textfsm.TextFSM(template_file)
@@ -730,7 +741,8 @@ def interfaces(current_ring: dict, checking_device_name: str):
                             telnet.sendline('exit')
                             break
                         else:
-                            print("    Ошибка: timeout")
+                            if enable_print:
+                                print("    Ошибка: timeout")
                             break
                     with open(f'{root_dir}/templates/int_des_alcatel_linksys2.template', 'r') as template_file:
                         int_des_ = textfsm.TextFSM(template_file)
@@ -744,15 +756,18 @@ def interfaces(current_ring: dict, checking_device_name: str):
 
                 # Edge-Core
                 elif bool(findall(r'Hardware version', version)):
-                    print("    Edge-Core")
+                    if enable_print:
+                        print("    Edge-Core")
 
                 # Zyxel
                 elif bool(findall(r'ZyNOS', version)):
-                    print("    Zyxel")
+                    if enable_print:
+                        print("    Zyxel")
                 telnet.sendline('exit')
 
         except pexpect.exceptions.TIMEOUT:
-            print("    \033[31mВремя ожидания превышено! (timeout)\033[0m")
+            if enable_print:
+                print("    \033[31mВремя ожидания превышено! (timeout)\033[0m")
 
 
 def search_admin_down(current_ring: dict, current_ring_list: list, checking_device_name: str):
@@ -1189,22 +1204,35 @@ def neighbors(current_ring: dict, checking_device_name: str):
 
 def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
     valid = True
-    for device in dev_list:
+
+    def neigh(ring: dict, device: str, double_list: list):
+        global valid
         des_num = 0
-        print('')
-        for d, s in dev_status:
-            if device == d and s:
-                intf = interfaces(ring, device)
-                double_list = dev_list + dev_list
-                for line in intf:
-                    if bool(findall(double_list[double_list.index(device)-1], line[2])):
-                        print(f'Сосед сверху: \033[33m{double_list[double_list.index(device)-1]}\033[0m')
-                        des_num += 1
-                    if bool(findall(double_list[double_list.index(device)+1], line[2])):
-                        print(f'Сосед снизу: \033[33m{double_list[double_list.index(device)+1]}\033[0m')
-                        des_num += 1
+        intf = interfaces(ring, device, enable_print=False)
+        for line in intf:
+
+            if bool(findall(double_list[double_list.index(device) - 1], line[2])):
+                result[device]['top'] = f'\033[33m{double_list[double_list.index(device) - 1]}\033[0m'
+                des_num += 1
+            if bool(findall(double_list[double_list.index(device) + 1], line[2])):
+                result[device]['bot'] = f'\033[33m{double_list[double_list.index(device) + 1]}\033[0m'
+                des_num += 1
         if des_num < 2:
             valid = False
+
+    result = {dev: {'top': '', 'bot': ''} for dev in dev_list}
+    double_list = dev_list + dev_list
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        for device in dev_list:
+            for d, s in dev_status:
+                if device == d and s:
+                    executor.submit(neigh, ring, device, double_list)
+
+    for res_dev in result:
+        print(f'\nОборудование: \033[34m{res_dev}\033[0m')
+        print(f'    Сосед сверху: {result[res_dev]["top"]}')
+        print(f'    Сосед снизу: {result[res_dev]["bot"]}')
     return valid
 
 
