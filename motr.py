@@ -39,7 +39,7 @@ def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str)
         return False
 
 
-def get_ring(device_name: str):
+def get_ring(device_name: str) -> tuple:
     '''
     Функция для поиска кольца, к которому относится переданный узел сети \n
     :param device_name: Уникальное имя узла сети
@@ -60,7 +60,7 @@ def get_ring(device_name: str):
                         for i in current_ring:
                             current_ring_list.append(i)
                         return current_ring, current_ring_list, str(current_ring_name)
-    sys.exit()
+    return ()
 
 
 def ping_from_device(device_name: str, ring: dict):
@@ -528,7 +528,10 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
 
 
 def start(dev: str) -> None:
-    current_ring, current_ring_list, current_ring_name = get_ring(dev)
+    get_ring_ = get_ring(dev)
+    if not get_ring_:
+        sys.exit()
+    current_ring, current_ring_list, current_ring_name = get_ring_
 
     # Заголовок
     print('\n')
@@ -612,11 +615,12 @@ def interfaces(current_ring: dict, checking_device_name: str):
                     output = ''
                     num = ''
                     while True:
-                        match = telnet.expect(['Too many parameters', ']', "  ---- More ----", '>', pexpect.TIMEOUT])
-                        page = str(telnet.before.decode('utf-8')).replace("[42D", '')
+                        match = telnet.expect(['Too many parameters', ']', "  ---- More ----",
+                                               "Unrecognized command", ">", pexpect.TIMEOUT])
+                        output += str(telnet.before.decode('utf-8')).replace("[42D", '').strip()
                         # page = re.sub(" +\x08+ +\x08+", "\n", page)
-                        output += page.strip()
-                        if match == 3:
+                        print(match)
+                        if match == 4:
                             telnet.sendline("quit")
                             break
                         elif match == 1:
@@ -627,15 +631,22 @@ def interfaces(current_ring: dict, checking_device_name: str):
                         elif match == 2:
                             telnet.send(" ")
                             output += '\n'
-                        elif match == 0:
+                        elif match == 0 or match == 3:
+                            print('test')
+                            telnet.expect('>')
+                            telnet.sendline('super')
+                            telnet.expect(':')
+                            telnet.sendline('sevaccess')
                             telnet.expect('>')
                             telnet.sendline('dis brief int')
                             num = '2'
+                            output = ''
                         else:
                             print("    Ошибка: timeout")
                             break
                     telnet.sendline("quit")
                     output = re.sub("\n +\n", "\n", output)
+                    print(output)
                     with open(f'{root_dir}/templates/int_des_huawei{num}.template', 'r') as template_file:
                         int_des_ = textfsm.TextFSM(template_file)
                         result = int_des_.ParseText(output)  # Ищем интерфейсы
@@ -841,8 +852,14 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                 elif bool(findall(r'Error: Unrecognized command', version)):
                     if match == 1:
                         telnet.sendline("sys")
+                        if telnet.expect([']', 'Unrecognized command']):
+                            telnet.sendline('super')
+                            telnet.expect(':')
+                            telnet.sendline('sevaccess')
+                            telnet.expect('>')
+                            telnet.sendline('sys')
+                            telnet.expect(']')
                         print(f'    <{device}>system-view')
-                    telnet.expect(']')
                     interface = interface_normal_view(interface)
                     telnet.sendline(f"interface {interface}")
                     print(f"    [{device}]interface {interface}")
@@ -931,7 +948,27 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
 
                 # Alcatel, Linksys
                 elif bool(findall(r'SW version', version)):
-                    pass
+                    telnet.sendline('conf t')
+                    telnet.expect('#')
+                    telnet.sendline(f'interface ethernet {interface}')
+                    if status == 'down':
+                        telnet.sendline('sh')
+                        print(f'    {device}(config-if)#shutdown')
+                    elif status == 'up':
+                        telnet.sendline('no sh')
+                        print(f'    {device}(config-if)#no shutdown')
+                    telnet.expect(f'#')
+                    telnet.sendline('exit')
+                    telnet.expect('#')
+                    telnet.sendline('exit')
+                    telnet.expect('#')
+                    telnet.sendline('write')
+                    if telnet.expect(['succeeded', '#']) == 0:
+                        print("    Saved!")
+                    else:
+                        print("    Don't saved!")
+                    telnet.sendline('exit')
+                    print('    QUIT\n')
 
                 # Edge-Core
                 elif bool(findall(r'Hardware version', version)):
@@ -961,7 +998,7 @@ def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
             return line[0]    # Интерфейс
 
 
-def get_config() -> None:
+def get_config(conf=None):
     '''
     Переопределяет глобальные переменные считывая файл конфигурации "config.conf", если такового не существует,
     то создает с настройками по умолчанию \n
@@ -980,6 +1017,11 @@ def get_config() -> None:
     config.read(f'{root_dir}/config.conf')
     email_notification = 'enable' if config.get("Settings", 'email_notification') == 'enable' else 'disable'
     rings_files = get_rings()
+
+    if conf == 'rings_files':
+        return rings_files
+    elif conf == 'email_notification':
+        return email_notification
 
 
 def return_files(path: str):
@@ -1102,7 +1144,7 @@ def neighbors(current_ring: dict, checking_device_name: str):
                             break
                     telnet.sendline("quit")
                     output = re.sub("\n +\n", "\n", output)
-                    print(output)
+                    # print(output)
                     with open(f'{root_dir}/templates/neighbors_huawei.template', 'r') as template_file:
                         int_des_ = textfsm.TextFSM(template_file)
                         result = int_des_.ParseText(output)  # Ищем интерфейсы
@@ -1206,7 +1248,10 @@ if __name__ == '__main__':
             if key == '-D' or key == '--device':
                 if len(sys.argv) > i+1:
                     if len(sys.argv) > i+2 and sys.argv[i+2] == '--check':
-                        current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
+                        get_ring_ = get_ring(sys.argv[i+1])
+                        if not get_ring_:
+                            sys.exit()
+                        current_ring, current_ring_list, current_ring_name = get_ring_
                         print(f'    \033[32m{current_ring_name}\033[0m\n')
                         devices_ping = ping_devices(current_ring)
                         for device in current_ring_list:
@@ -1219,7 +1264,10 @@ if __name__ == '__main__':
                                         print(f'\033[32m{ad}\033[0m')
 
                     elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-all':
-                        current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
+                        get_ring_ = get_ring(sys.argv[i + 1])
+                        if not get_ring_:
+                            sys.exit()
+                        current_ring, current_ring_list, current_ring_name = get_ring_
                         print(f'    \033[32m{current_ring_name}\033[0m\n')
                         devices_ping = ping_devices(current_ring)
                         for device in current_ring_list:
@@ -1235,7 +1283,10 @@ if __name__ == '__main__':
                                         print(sh, '\n')
 
                     elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-int':
-                        current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
+                        get_ring_ = get_ring(sys.argv[i + 1])
+                        if not get_ring_:
+                            sys.exit()
+                        current_ring, current_ring_list, current_ring_name = get_ring_
                         print(f'    \033[32m{current_ring_name}\033[0m\n')
                         sh = interfaces(current_ring, sys.argv[i+1])
                         if sh:
@@ -1247,7 +1298,10 @@ if __name__ == '__main__':
                             print(sh, '\n')
 
                     elif len(sys.argv) > i+2 and sys.argv[i+2] == '--check-des':
-                        current_ring, current_ring_list, current_ring_name = get_ring(sys.argv[i+1])
+                        get_ring_ = get_ring(sys.argv[i + 1])
+                        if not get_ring_:
+                            sys.exit()
+                        current_ring, current_ring_list, current_ring_name = get_ring_
                         print(f'    \033[32m{current_ring_name}\033[0m\n')
                         devices_ping = ping_devices(current_ring)
                         v = check_descriptions(current_ring, current_ring_list, devices_ping)
@@ -1260,5 +1314,3 @@ if __name__ == '__main__':
                         start(sys.argv[i+1])
                 else:
                     print_help()
-            if len(sys.argv) == 1:
-                print_help()
