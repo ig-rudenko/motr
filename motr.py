@@ -619,7 +619,6 @@ def interfaces(current_ring: dict, checking_device_name: str):
                                                "Unrecognized command", ">", pexpect.TIMEOUT])
                         output += str(telnet.before.decode('utf-8')).replace("[42D", '').strip()
                         # page = re.sub(" +\x08+ +\x08+", "\n", page)
-                        print(match)
                         if match == 4:
                             telnet.sendline("quit")
                             break
@@ -632,7 +631,6 @@ def interfaces(current_ring: dict, checking_device_name: str):
                             telnet.send(" ")
                             output += '\n'
                         elif match == 0 or match == 3:
-                            print('test')
                             telnet.expect('>')
                             telnet.sendline('super')
                             telnet.expect(':')
@@ -646,7 +644,6 @@ def interfaces(current_ring: dict, checking_device_name: str):
                             break
                     telnet.sendline("quit")
                     output = re.sub("\n +\n", "\n", output)
-                    print(output)
                     with open(f'{root_dir}/templates/int_des_huawei{num}.template', 'r') as template_file:
                         int_des_ = textfsm.TextFSM(template_file)
                         result = int_des_.ParseText(output)  # Ищем интерфейсы
