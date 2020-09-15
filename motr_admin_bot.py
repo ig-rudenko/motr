@@ -84,6 +84,7 @@ if __name__ == '__main__':
             if key == '/stat':
                 rings_count = 0
                 devices_count = 0
+                rings_files = motr.get_config('rings_files')
                 for file in rings_files:
                     with open(file, 'r') as ff:
                         rings = yaml.safe_load(ff)  # Перевод из yaml в словарь

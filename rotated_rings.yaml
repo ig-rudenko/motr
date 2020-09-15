@@ -31,3 +31,4 @@ test_ring:
   default_port: GE0/0/2
   default_to: SVSL-01-MotR-ASW3
   priority: 2
+test_ring2: Deploying

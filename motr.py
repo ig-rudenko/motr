@@ -14,6 +14,7 @@ from datetime import datetime
 import time
 import email_notifications as email
 import configparser
+from tabulate import tabulate
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 email_notification = 'enable'
@@ -770,7 +771,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print=True)
                 print("    \033[31mВремя ожидания превышено! (timeout)\033[0m")
 
 
-def search_admin_down(current_ring: dict, current_ring_list: list, checking_device_name: str):
+def search_admin_down(current_ring: dict, current_ring_list: list, checking_device_name: str, enable_print=True):
     '''
     Ищет есть ли у данного узла сети порт(ы) в состоянии "admin down" в сторону другого узла сети из этого кольца.
     Проверка осуществляется по наличию в description'е имени узла сети из текущего кольца.
@@ -778,12 +779,14 @@ def search_admin_down(current_ring: dict, current_ring_list: list, checking_devi
     :param current_ring:         Кольцо
     :param current_ring_list:    Список узлов сети в кольце
     :param checking_device_name: Имя узла сети
+    :param enable_print:         Вывод в консоль включен по умолчанию
     :return:    В случае успеха возвращает имя оборудования с портом(ми) "admin down" и имя оборудования к которому
                 ведет этот порт и интерфейс. Если нет портов "admin down", то возвращает "False"
     '''
-    print("---- def search_admin_down ----")
+    if enable_print:
+        print("---- def search_admin_down ----")
 
-    result = interfaces(current_ring, checking_device_name)
+    result = interfaces(current_ring, checking_device_name, enable_print=enable_print)
     ad_to_this_host = []  # имя оборудования к которому ведет порт "admin down"
     ad_interface = []
     # print(result)
@@ -1230,10 +1233,59 @@ def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
                     executor.submit(neigh, ring, device, double_list)
 
     for res_dev in result:
-        print(f'\nОборудование: \033[34m{res_dev}\033[0m')
+        print(f'\nОборудование: \033[34m{res_dev}\033[0m {ring[res_dev]["ip"]}')
         print(f'    Сосед сверху: {result[res_dev]["top"]}')
         print(f'    Сосед снизу: {result[res_dev]["bot"]}')
     return valid
+
+
+def show_all_int(device: str):
+
+    def get_int(ring: dict, dev: str, output: dict):
+        result[dev] = interfaces(ring, dev, enable_print=False)
+
+    get_ring_ = get_ring(device)
+    if not get_ring_:
+        sys.exit()
+    current_ring, current_ring_list, current_ring_name = get_ring_
+    print(f'    \033[32m{current_ring_name}\033[0m\n')
+    devices_ping = ping_devices(current_ring)
+
+    result = {x: [] for x in current_ring_list}
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        for device in current_ring_list:
+            for d, s in devices_ping:
+                if device == d and s:
+                    executor.submit(get_int, current_ring, device, result)
+    for d in result:
+        print(f'\nОборудование: \033[34m{d}\033[0m {current_ring[d]["ip"]}')
+        print(tabulate(tuple(result[d]), headers=['Interface', 'Status', 'Description']))
+
+
+def check_admin_down(device: str):
+
+    def get_ad(ring, ring_list, device):
+        output_check[device] = search_admin_down(ring, ring_list, device, enable_print=False)
+
+    get_ring_ = get_ring(device)
+    if not get_ring_:
+        sys.exit()
+    ring, ring_list, ring_name = get_ring_
+    print(f'    \033[32m{ring_name}\033[0m\n')
+    devices_ping = ping_devices(ring)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        output_check = {x: () for x in ring_list}
+        for device in ring_list:
+            for d, s in devices_ping:
+                if device == d and s:
+                    executor.submit(get_ad, ring, ring_list, device)
+    for d in output_check:
+        print(f'\nОборудование: \033[34m{d}\033[0m {ring[d]["ip"]}')
+        if output_check[d]:
+            print(f'\033[32mFind admin down!\033[0m Интерфейс: \033[32m{output_check[d][2][0]}\033[0m '
+                  f'ведет к устройству \033[32m{output_check[d][1][0]}\033[0m')
+        else:
+            print('\033[33mNo admin down\033[0m')
 
 
 if __name__ == '__main__':
@@ -1243,99 +1295,74 @@ if __name__ == '__main__':
         sys.exit()
     get_config()
 
-    if validation(rings_files):
-        for i, key in enumerate(sys.argv):
-            if key == '-h' or key == '--help':
-                print_help()
+    for i, key in enumerate(sys.argv):
+        if key == '-h' or key == '--help':
+            print_help()
 
-            if key == '--stat':
-                rings_count = 0
-                devices_count = 0
-                for file in rings_files:
-                    with open(file, 'r') as ff:
-                        rings = yaml.safe_load(ff)  # Перевод из yaml в словарь
-                    rings_count += len(rings)
-                    devrc = 0
-                    for r in rings:
-                        devrc += len(rings[r])
-                    devices_count += devrc
-                    print(f'rings: {len(rings)} devices: {devrc:<4} in file: {file}')
-                print(f"\n\033[4mtotal rings count\033[0m:\033[0m \033[32m{rings_count}\033[0m"
-                      f"\n\033[4mtotal devices count\033[0m: \033[32m{devices_count}\033[0m")
+        if key == '--stat':
+            rings_count = 0
+            devices_count = 0
+            for file in rings_files:
+                with open(file, 'r') as ff:
+                    rings = yaml.safe_load(ff)  # Перевод из yaml в словарь
+                rings_count += len(rings)
+                devrc = 0
+                for r in rings:
+                    devrc += len(rings[r])
+                devices_count += devrc
+                print(f'rings: {len(rings)} devices: {devrc:<4} in file: {file}')
+            print(f"\n\033[4mTotal rings count\033[0m:\033[0m \033[32m{rings_count}\033[0m"
+                  f"\n\033[4mTotal devices count\033[0m: \033[32m{devices_count}\033[0m")
+            with open(f'{root_dir}/rotated_rings.yaml', 'r') as r_rings_yaml:
+                r_rings = yaml.safe_load(r_rings_yaml)
+            deploying_rings = [x for x in r_rings if r_rings[x] == 'Deploying']
+            r_rings = [x for x in r_rings]
+            r_rings = set(r_rings) - set(deploying_rings)
+            print(f'\n\033[4mDeploying rings\033[0m: \033[32m{len(deploying_rings)}\033[0m')
+            for line in deploying_rings:
+                print(line)
+            print(f'\n\033[4mRotated rings\033[0m: \033[32m{len(r_rings)}\033[0m')
+            for line in r_rings:
+                if line:
+                    print(line)
 
-            if key == '--show-conf':
-                print(f'Файл конфигурации: \033[32m{root_dir}/config.conf\033[0m\n')
-                config = configparser.ConfigParser()
-                config.read(f'{root_dir}/config.conf')
-                print(f'    email_notification = \033[34m{config.get("Settings", "email_notification")}\033[0m')
-                print(f'    rings_directory = \033[34m{config.get("Settings", "rings_directory")}\033[0m\n')
+        if key == '--conf':
+            print(f'Файл конфигурации: \033[32m{root_dir}/config.conf\033[0m\n')
+            config = configparser.ConfigParser()
+            config.read(f'{root_dir}/config.conf')
+            print(f'    email_notification = \033[34m{config.get("Settings", "email_notification")}\033[0m')
+            print(f'    rings_directory = \033[34m{config.get("Settings", "rings_directory")}\033[0m\n')
 
-            if key == '-D' or key == '--device':
-                if len(sys.argv) > i+1:
-                    if len(sys.argv) > i+2 and sys.argv[i+2] == '--check':
-                        get_ring_ = get_ring(sys.argv[i+1])
-                        if not get_ring_:
-                            sys.exit()
-                        current_ring, current_ring_list, current_ring_name = get_ring_
-                        print(f'    \033[32m{current_ring_name}\033[0m\n')
-                        devices_ping = ping_devices(current_ring)
-                        for device in current_ring_list:
-                            for d, s in devices_ping:
-                                if device == d and s:
-                                    ad = search_admin_down(current_ring, current_ring_list, device)
-                                    if not ad:
-                                        print(f'\033[33mNo admin down\033[0m')
-                                    else:
-                                        print(f'\033[32m{ad}\033[0m')
+        if key == '-D' or key == '--device' and validation(rings_files):
+            if len(sys.argv) > i+1:
+                if len(sys.argv) > i+2 and sys.argv[i+2] == '--check':
+                    check_admin_down(sys.argv[i + 1])
 
-                    elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-all':
-                        get_ring_ = get_ring(sys.argv[i + 1])
-                        if not get_ring_:
-                            sys.exit()
-                        current_ring, current_ring_list, current_ring_name = get_ring_
-                        print(f'    \033[32m{current_ring_name}\033[0m\n')
-                        devices_ping = ping_devices(current_ring)
-                        for device in current_ring_list:
-                            for d, s in devices_ping:
-                                if device == d and s:
-                                    sh = interfaces(current_ring, device)
-                                    if sh:
-                                        for line in sh:
-                                            print(line)
-                                        else:
-                                            print('\n')
-                                    else:
-                                        print(sh, '\n')
+                elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-all':
+                    show_all_int(sys.argv[i + 1])
 
-                    elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-int':
-                        get_ring_ = get_ring(sys.argv[i + 1])
-                        if not get_ring_:
-                            sys.exit()
-                        current_ring, current_ring_list, current_ring_name = get_ring_
-                        print(f'    \033[32m{current_ring_name}\033[0m\n')
-                        sh = interfaces(current_ring, sys.argv[i+1])
-                        if sh:
-                            for line in sh:
-                                print(line)
-                            else:
-                                print('\n')
-                        else:
-                            print(sh, '\n')
+                elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-int':
+                    get_ring_ = get_ring(sys.argv[i + 1])
+                    if not get_ring_:
+                        sys.exit()
+                    current_ring, current_ring_list, current_ring_name = get_ring_
+                    print(f'    \033[32m{current_ring_name}\033[0m\n')
+                    print(tabulate(interfaces(current_ring, sys.argv[i+1]),
+                                   headers=['Interface', 'Status', 'Description']))
 
-                    elif len(sys.argv) > i+2 and sys.argv[i+2] == '--check-des':
-                        get_ring_ = get_ring(sys.argv[i + 1])
-                        if not get_ring_:
-                            sys.exit()
-                        current_ring, current_ring_list, current_ring_name = get_ring_
-                        print(f'    \033[32m{current_ring_name}\033[0m\n')
-                        devices_ping = ping_devices(current_ring)
-                        v = check_descriptions(current_ring, current_ring_list, devices_ping)
-                        if v:
-                            print('\n\033[32m Проверка пройдена успешно - OK!\033[0m')
-                        else:
-                            print('\n\033[31m Проверьте descriptions - Failed!\033[0m')
-
+                elif len(sys.argv) > i+2 and sys.argv[i+2] == '--check-des':
+                    get_ring_ = get_ring(sys.argv[i + 1])
+                    if not get_ring_:
+                        sys.exit()
+                    current_ring, current_ring_list, current_ring_name = get_ring_
+                    print(f'    \033[32m{current_ring_name}\033[0m\n')
+                    devices_ping = ping_devices(current_ring)
+                    if check_descriptions(current_ring, current_ring_list, devices_ping):
+                        print('\n\033[32m Проверка пройдена успешно - OK!\033[0m')
                     else:
-                        start(sys.argv[i+1])
+                        print('\n\033[31m Проверьте descriptions - Failed!\033[0m')
+
                 else:
-                    print_help()
+                    start(sys.argv[i+1])
+            else:
+                print_help()
