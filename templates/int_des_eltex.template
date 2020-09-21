@@ -1,0 +1,6 @@
+Value INTF (\S+\d)
+Value State (Up|Down)
+Value DESCRIPTION (\S+)
+
+Start
+  ^${INTF}\s+\S+\s+${State}\s+(Up|Down)+\s+${DESCRIPTION}(\s+) -> Record

@@ -140,6 +140,12 @@ def delete_ring_from_deploying_list(ring_name):
 
 
 def validation(files: list) -> bool:
+    '''
+    Проверяет структуру файлов колец и возвращает True, когда все файлы прошли проверку и
+    False, если хотя бы в одном файле найдено нарушение структуры \n
+    :param files: список файлов
+    :return: bool
+    '''
     valid = [True for _ in range(len(files))]
     if not rings_files:
         print(f'Укажите в файле конфигурации {root_dir} файл с кольцами или папку')
@@ -337,6 +343,7 @@ def validation(files: list) -> bool:
                                 f'Ошибка в структуре: \n'
                                 f'{invalid_files}'
                                 f'\n{text}')
+            print(f'Ошибка в структуре: \n{invalid_files}\n{text}')
             return False
     return True
 
@@ -528,7 +535,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
         print("Все узлы сети из данного кольца недоступны!")        # ...конец кольца
 
 
-def start(dev: str) -> None:
+def start(dev: str):
     get_ring_ = get_ring(dev)
     if not get_ring_:
         sys.exit()
@@ -548,7 +555,7 @@ def start(dev: str) -> None:
                 if current_ring_name == rring:
                     print(f"Кольцо, к которому принадлежит узел сети {dev} уже находится в списке как развернутое\n"
                           f"(смотреть файл \"{root_dir}/rotated_rings.yaml\")")
-                    return False # Выход
+                    return False
 
     devices_ping = ping_devices(current_ring)
 
@@ -570,18 +577,24 @@ def start(dev: str) -> None:
 
 
 def time_sleep(sec: int) -> None:
+    '''
+    Пауза с выводом точки в одну строку, равную количеству секунд ожидания \n
+    :param sec: время в секундах
+    :return: None
+    '''
     for s in range(sec):
         print('.', end='', flush=True)
         time.sleep(1)
 
 
-def interfaces(current_ring: dict, checking_device_name: str, enable_print=True):
+def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool = True):
     '''
-    Подключаемся к оборудованию по telnet и считываем интерфейсы, их статусы и описание \n
+    Подключаемся к оборудованию по telnet и считываем интерфейсы, их статусы и описание
+    Автоматически определяется тип производителя \n
     :param current_ring:            Кольцо
     :param checking_device_name:    Имя оборудования
     :param enable_print:            По умолчанию вывод в консоль включен
-    :return:                        Список: интерфейс, статус, описание
+    :return:                        Список: интерфейс, статус, описание; False в случае ошибки
     '''
     with pexpect.spawn(f"telnet {current_ring[checking_device_name]['ip']}") as telnet:
         try:
@@ -764,6 +777,36 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print=True)
                 elif bool(findall(r'ZyNOS', version)):
                     if enable_print:
                         print("    Zyxel")
+
+                # Eltex
+                elif bool(findall(r'Active-image: ', version)):
+                    if enable_print:
+                        print("    Eltex")
+                        #telnet.expect('#')
+                        telnet.sendline("sh int des")
+                        output = ''
+                        while True:
+                            match = telnet.expect([r'#$', "More: <space>", pexpect.TIMEOUT])
+                            page = str(telnet.before.decode('utf-8')).replace("[42D", '').replace(
+                                "        ", '')
+                            # page = re.sub(" +\x08+ +\x08+", "\n", page)
+                            output += page.strip()
+                            if match == 0:
+                                telnet.sendline("exit")
+                                break
+                            elif match == 1:
+                                telnet.send(" ")
+                                #output += '\n'
+                            else:
+                                if enable_print:
+                                    print("    Ошибка: timeout")
+                                break
+                        output = re.sub("\n +\n", "\n", output)
+                        with open(f'{root_dir}/templates/int_des_eltex.template', 'r') as template_file:
+                            int_des_ = textfsm.TextFSM(template_file)
+                            result = int_des_.ParseText(output)  # Ищем интерфейсы
+                        return result
+
                 telnet.sendline('exit')
 
         except pexpect.exceptions.TIMEOUT:
@@ -771,27 +814,27 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print=True)
                 print("    \033[31mВремя ожидания превышено! (timeout)\033[0m")
 
 
-def search_admin_down(current_ring: dict, current_ring_list: list, checking_device_name: str, enable_print=True):
+def search_admin_down(ring: dict, ring_list: list, checking_device_name: str, enable_print=True):
     '''
     Ищет есть ли у данного узла сети порт(ы) в состоянии "admin down" в сторону другого узла сети из этого кольца.
     Проверка осуществляется по наличию в description'е имени узла сети из текущего кольца.
 
-    :param current_ring:         Кольцо
-    :param current_ring_list:    Список узлов сети в кольце
-    :param checking_device_name: Имя узла сети
-    :param enable_print:         Вывод в консоль включен по умолчанию
+    :param ring:                    Кольцо
+    :param ring_list:               Список узлов сети в кольце
+    :param checking_device_name:    Имя узла сети
+    :param enable_print:            Вывод в консоль включен по умолчанию
     :return:    В случае успеха возвращает имя оборудования с портом(ми) "admin down" и имя оборудования к которому
                 ведет этот порт и интерфейс. Если нет портов "admin down", то возвращает "False"
     '''
     if enable_print:
         print("---- def search_admin_down ----")
 
-    result = interfaces(current_ring, checking_device_name, enable_print=enable_print)
+    result = interfaces(ring, checking_device_name, enable_print=enable_print)
     ad_to_this_host = []  # имя оборудования к которому ведет порт "admin down"
     ad_interface = []
     # print(result)
     if result:  # Если найден admin_down, то...
-        for dev_name in current_ring_list:  # ...перебираем узлы сети в кольце:
+        for dev_name in ring_list:  # ...перебираем узлы сети в кольце:
             for res_line in result:  # Перебираем все найденные интерфейсы:
                 if bool(findall(dev_name, res_line[2])) and (
                         bool(findall(r'(admin down|\*down|Down|Disabled|ADM DOWN)', res_line[1]))):
@@ -805,10 +848,11 @@ def search_admin_down(current_ring: dict, current_ring_list: list, checking_devi
         return False
 
 
-def interface_normal_view(interface):
+def interface_normal_view(interface) -> str:
     '''
-    Приводит имя интерфейса к общепринятому виду \n
-    Например: Eth 0/1 -> Ethernet0/1 \n
+    Приводит имя интерфейса к виду принятому по умолчанию для коммутаторов\n
+    Например: Eth 0/1 -> Ethernet0/1
+              GE1/0/12 -> GigabitEthernet1/0/12\n
     :param interface:   Интерфейс в сыром виде (raw)
     :return:            Интерфейс в общепринятом виде
     '''
@@ -822,6 +866,10 @@ def interface_normal_view(interface):
         return f"GigabitEthernet{interface_number[0][0]}"
     elif bool(findall('^\d', interface)):
         return findall('^\d+', interface)[0]
+    elif bool(findall('^[Tt]', interface)):
+        return f'TengigabitEthernet{interface_number[0][0]}'
+    else:
+        return interface
 
 
 def set_port_status(current_ring: dict, device: str, interface: str, status: str):
@@ -992,28 +1040,57 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                 # Zyxel
                 elif bool(findall(r'ZyNOS', version)):
                     print("    Zyxel")
+
+                # Eltex
+                elif bool(findall(r'Active-image: ', version)):
+                    telnet.sendline('conf t')
+                    telnet.expect('#')
+                    interface = interface_normal_view(interface)
+                    telnet.sendline(f"interface {interface}")
+                    telnet.expect('#')
+                    print(f"    {device}(config)#interface {interface}")
+                    if status == 'down':
+                        telnet.sendline('sh')
+                        print(f'    {device}(config-if)#shutdown')
+                    elif status == 'up':
+                        telnet.sendline('no sh')
+                        print(f'    {device}(config-if)#no shutdown')
+                    telnet.expect(f'#')
+                    telnet.sendline('exit')
+                    telnet.expect('#')
+                    telnet.sendline('exit')
+                    telnet.expect('#')
+                    telnet.sendline('write')
+                    if telnet.expect(['succeeded', '#']) == 0:
+                        print("    Saved!")
+                    else:
+                        print("    Don't saved!")
+                    telnet.sendline('exit')
+                    print('    QUIT\n')
+                    return 1
+
                 telnet.sendline('exit')
 
         except pexpect.exceptions.TIMEOUT:
             print("    Время ожидания превышено! (timeout)")
 
 
-def find_port_by_desc(current_ring: dict, main_name: str, target_name: str):
+def find_port_by_desc(ring: dict, main_name: str, target_name: str):
     '''
     Поиск интерфейса с description имеющим в себе имя другого оборудования \n
-    :param current_ring: Кольцо
+    :param ring:        Кольцо
     :param main_name:   Узел сети, где ищем
     :param target_name: Узел сети, который ищем
     :return:            Интерфейс
     '''
     print("---- def find_port_by_desc ----")
-    result = interfaces(current_ring, main_name)
+    result = interfaces(ring, main_name)
     for line in result:
         if bool(findall(target_name, line[2])):  # Ищем строку, где в description содержится "target_name"
             return line[0]    # Интерфейс
 
 
-def get_config(conf=None):
+def get_config(conf: str = None):
     '''
     Переопределяет глобальные переменные считывая файл конфигурации "config.conf", если такового не существует,
     то создает с настройками по умолчанию \n
@@ -1039,7 +1116,7 @@ def get_config(conf=None):
         return email_notification
 
 
-def return_files(path: str):
+def return_files(path: str) -> list:
     '''
     Возвращает все файлы в папке и подпапках \n
     :param path: Путь до папки
@@ -1055,7 +1132,7 @@ def return_files(path: str):
     return rings_f
 
 
-def get_rings():
+def get_rings() -> list:
     '''
     Из конфигурационного файла достаем переменную "rings_directory" и указываем все найденные файлы \n
     :return: Список файлов с кольцами
@@ -1089,16 +1166,21 @@ def get_rings():
 
 def print_help():
     print('''
-Usage: motr.py [-D device] [options]
-    -D              Device name
-    --device        Device name
-   
+Usage:  motr.py [-D DEVICE [OPTIONS]]
+        motr.py [--device DEVICE [OPTIONS]]
+        
+    -D, --device     Device name
+    
+        --check         Search admin down on each devices in ring
+        --check-des     Checks if the description on the interfaces 
+                        of each devices contains names two device by side
+        --show-int      Show interfaces of device
+        --show-all      Show interfaces of all devices in ring
+        --show-ping     Show ping
+
 Options:
-    --check         Search admin down on each devices in ring
+    --conf          Show config file path and variables
     --stat          Show information about rings
-    --show-int      Show interfaces of device
-    --show-all      Show interfaces of all devices in ring
-    --show-ping     Show ping
     ''')
 
 
@@ -1205,23 +1287,19 @@ def neighbors(current_ring: dict, checking_device_name: str):
             print("    Время ожидания превышено! (timeout)")
 
 
+# Функции для ключевых слов
+
+
 def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
     valid = True
 
     def neigh(ring: dict, device: str, double_list: list):
-        global valid
-        des_num = 0
         intf = interfaces(ring, device, enable_print=False)
         for line in intf:
-
             if bool(findall(double_list[double_list.index(device) - 1], line[2])):
                 result[device]['top'] = f'\033[33m{double_list[double_list.index(device) - 1]}\033[0m'
-                des_num += 1
             if bool(findall(double_list[double_list.index(device) + 1], line[2])):
                 result[device]['bot'] = f'\033[33m{double_list[double_list.index(device) + 1]}\033[0m'
-                des_num += 1
-        if des_num < 2:
-            valid = False
 
     result = {dev: {'top': '', 'bot': ''} for dev in dev_list}
     double_list = dev_list + dev_list
@@ -1230,18 +1308,20 @@ def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
         for device in dev_list:
             for d, s in dev_status:
                 if device == d and s:
-                    executor.submit(neigh, ring, device, double_list)
+                    valid = executor.submit(neigh, ring, device, double_list)
 
     for res_dev in result:
         print(f'\nОборудование: \033[34m{res_dev}\033[0m {ring[res_dev]["ip"]}')
         print(f'    Сосед сверху: {result[res_dev]["top"]}')
         print(f'    Сосед снизу: {result[res_dev]["bot"]}')
+        if not result[res_dev]["top"] or not result[res_dev]["bot"]:
+            valid = False
     return valid
 
 
 def show_all_int(device: str):
 
-    def get_int(ring: dict, dev: str, output: dict):
+    def get_int(ring: dict, dev: str):
         result[dev] = interfaces(ring, dev, enable_print=False)
 
     get_ring_ = get_ring(device)
@@ -1259,7 +1339,10 @@ def show_all_int(device: str):
                     executor.submit(get_int, current_ring, device, result)
     for d in result:
         print(f'\nОборудование: \033[34m{d}\033[0m {current_ring[d]["ip"]}')
-        print(tabulate(tuple(result[d]), headers=['Interface', 'Status', 'Description']))
+        try:
+            print(tabulate(tuple(result[d]), headers=['\nInterface', 'Admin\nStatus', '\nDescription']))
+        except TypeError:
+            print(result[d])
 
 
 def check_admin_down(device: str):
@@ -1348,7 +1431,7 @@ if __name__ == '__main__':
                     current_ring, current_ring_list, current_ring_name = get_ring_
                     print(f'    \033[32m{current_ring_name}\033[0m\n')
                     print(tabulate(interfaces(current_ring, sys.argv[i+1]),
-                                   headers=['Interface', 'Status', 'Description']))
+                                   headers=['\nInterface', 'Admin\nStatus', '\nDescription']))
 
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--check-des':
                     get_ring_ = get_ring(sys.argv[i + 1])
