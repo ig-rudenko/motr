@@ -350,6 +350,7 @@ def validation(files: list) -> bool:
 
 def main(devices_ping: list, current_ring: dict, current_ring_list: list, current_ring_name: str,
          this_is_the_second_loop: bool = False) -> None:
+
     successor_name = ''
 
     for device_name, device_status in devices_ping:     # Листаем узлы сети и их доступность по "ping"
@@ -782,30 +783,29 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 elif bool(findall(r'Active-image: ', version)):
                     if enable_print:
                         print("    Eltex")
-                        #telnet.expect('#')
-                        telnet.sendline("sh int des")
-                        output = ''
-                        while True:
-                            match = telnet.expect([r'#$', "More: <space>", pexpect.TIMEOUT])
-                            page = str(telnet.before.decode('utf-8')).replace("[42D", '').replace(
-                                "        ", '')
-                            # page = re.sub(" +\x08+ +\x08+", "\n", page)
-                            output += page.strip()
-                            if match == 0:
-                                telnet.sendline("exit")
-                                break
-                            elif match == 1:
-                                telnet.send(" ")
-                                #output += '\n'
-                            else:
-                                if enable_print:
-                                    print("    Ошибка: timeout")
-                                break
-                        output = re.sub("\n +\n", "\n", output)
-                        with open(f'{root_dir}/templates/int_des_eltex.template', 'r') as template_file:
-                            int_des_ = textfsm.TextFSM(template_file)
-                            result = int_des_.ParseText(output)  # Ищем интерфейсы
-                        return result
+                    telnet.sendline("sh int des")
+                    output = ''
+                    while True:
+                        match = telnet.expect([r'#$', "More: <space>", pexpect.TIMEOUT])
+                        page = str(telnet.before.decode('utf-8')).replace("[42D", '').replace(
+                            "        ", '')
+                        # page = re.sub(" +\x08+ +\x08+", "\n", page)
+                        output += page.strip()
+                        if match == 0:
+                            telnet.sendline("exit")
+                            break
+                        elif match == 1:
+                            telnet.send(" ")
+                            #output += '\n'
+                        else:
+                            if enable_print:
+                                print("    Ошибка: timeout")
+                            break
+                    output = re.sub("\n +\n", "\n", output)
+                    with open(f'{root_dir}/templates/int_des_eltex.template', 'r') as template_file:
+                        int_des_ = textfsm.TextFSM(template_file)
+                        result = int_des_.ParseText(output)  # Ищем интерфейсы
+                    return result
 
                 telnet.sendline('exit')
 
@@ -1290,7 +1290,7 @@ def neighbors(current_ring: dict, checking_device_name: str):
 # Функции для ключевых слов
 
 
-def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
+def check_descriptions(ring: dict, dev_list: list) -> bool:
     valid = True
 
     def neigh(ring: dict, device: str, double_list: list):
@@ -1306,9 +1306,7 @@ def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         for device in dev_list:
-            for d, s in dev_status:
-                if device == d and s:
-                    valid = executor.submit(neigh, ring, device, double_list)
+            valid = executor.submit(neigh, ring, device, double_list)
 
     for res_dev in result:
         print(f'\nОборудование: \033[34m{res_dev}\033[0m {ring[res_dev]["ip"]}')
@@ -1321,24 +1319,21 @@ def check_descriptions(ring: dict, dev_list: list, dev_status: list) -> bool:
 
 def show_all_int(device: str):
 
-    def get_int(ring: dict, dev: str):
+    def get_interface(ring: dict, dev: str):
         result[dev] = interfaces(ring, dev, enable_print=False)
 
     get_ring_ = get_ring(device)
     if not get_ring_:
         sys.exit()
-    current_ring, current_ring_list, current_ring_name = get_ring_
-    print(f'    \033[32m{current_ring_name}\033[0m\n')
-    devices_ping = ping_devices(current_ring)
-
-    result = {x: [] for x in current_ring_list}
+    ring, ring_list, ring_name = get_ring_
+    print(f'    \033[32m{ring_name}\033[0m\n')
+    ping_devices(ring)
+    result = {x: [] for x in ring_list}
     with ThreadPoolExecutor(max_workers=10) as executor:
-        for device in current_ring_list:
-            for d, s in devices_ping:
-                if device == d and s:
-                    executor.submit(get_int, current_ring, device, result)
+        for device in ring_list:
+            executor.submit(get_interface, ring, device)
     for d in result:
-        print(f'\nОборудование: \033[34m{d}\033[0m {current_ring[d]["ip"]}')
+        print(f'\nОборудование: \033[34m{d}\033[0m {ring[d]["ip"]}')
         try:
             print(tabulate(tuple(result[d]), headers=['\nInterface', 'Admin\nStatus', '\nDescription']))
         except TypeError:
@@ -1428,19 +1423,19 @@ if __name__ == '__main__':
                     get_ring_ = get_ring(sys.argv[i + 1])
                     if not get_ring_:
                         sys.exit()
-                    current_ring, current_ring_list, current_ring_name = get_ring_
-                    print(f'    \033[32m{current_ring_name}\033[0m\n')
-                    print(tabulate(interfaces(current_ring, sys.argv[i+1]),
+                    ring, _, ring_name = get_ring_
+                    print(f'    \033[32m{ring_name}\033[0m\n')
+                    print(tabulate(interfaces(ring, sys.argv[i+1]),
                                    headers=['\nInterface', 'Admin\nStatus', '\nDescription']))
 
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--check-des':
                     get_ring_ = get_ring(sys.argv[i + 1])
                     if not get_ring_:
                         sys.exit()
-                    current_ring, current_ring_list, current_ring_name = get_ring_
-                    print(f'    \033[32m{current_ring_name}\033[0m\n')
-                    devices_ping = ping_devices(current_ring)
-                    if check_descriptions(current_ring, current_ring_list, devices_ping):
+                    ring, ring_list, ring_name = get_ring_
+                    print(f'    \033[32m{ring_name}\033[0m\n')
+                    ping_devices(ring)
+                    if check_descriptions(ring, ring_list):
                         print('\n\033[32m Проверка пройдена успешно - OK!\033[0m')
                     else:
                         print('\n\033[31m Проверьте descriptions - Failed!\033[0m')
