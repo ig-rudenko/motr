@@ -48,7 +48,7 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
     server_login = 'irudenko'
     server_password = '1qaz2wsx!'
 
-    to_addresses = ['atemnyh@sevtelecom.ru', 'irudenko@sevtelecom.ru']
+    to_addresses = ['atemnyh@sevtelecom.ru', 'irudenko@sevtelecom.ru', 'noc@sevtelecom.ru']
     from_address = 'irudenko@sevtelecom.ru'
 
     status_before = ''

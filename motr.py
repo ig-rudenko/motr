@@ -369,9 +369,9 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                 with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
                     yaml.dump(rotated_rings, save_ring, default_flow_style=False)  # Переписываем файл
 
-                print(f"Найден узел сети {admin_down[0]} со статусом порта {admin_down[2][0]}: admin down\n"
-                      f"Данный порт ведет к {admin_down[1][0]}")
-                rotate = ring_rotate_type(current_ring_list, admin_down[0], admin_down[1][0])  # Тип разворота кольца
+                print(f"Найден узел сети {admin_down['device']} со статусом порта {admin_down['interface'][0]}: "
+                      f"admin down\nДанный порт ведет к {admin_down['next_device'][0]}")
+                rotate = ring_rotate_type(current_ring_list, admin_down['device'], admin_down['next_device'][0])
                 print(f'Разворот кольца: {rotate}')
                 if rotate == 'positive':
                     index_factor = -1
@@ -385,7 +385,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                 double_current_ring_list = current_ring_list + current_ring_list
                 # Начальный индекс равен индексу соседнего узла по отношению к узлу сети, где
                 #   установлен принудительный обрыв кольца (admin down) в обратную сторону от разворота кольца
-                curr_index = current_ring_list.index(admin_down[0])+index_factor
+                curr_index = current_ring_list.index(admin_down['device'])+index_factor
                 iteration = 1
                 if index_factor:                    # Если кольцо имеет поворот то...
                     while index_factor:                 # До тех пор, пока не найдем "преемника":
@@ -419,8 +419,8 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                     print(f'Закрываем порт {successor_intf} на {successor_name}')
                     if set_port_status(current_ring,
                                        successor_name, successor_intf, "down"):   # Закрываем порт на "преемнике"
-                        print(f'Поднимаем порт {admin_down[2][0]} на {admin_down[0]}')
-                        if set_port_status(current_ring, admin_down[0], admin_down[2][0], "up"):
+                        print(f'Поднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}')
+                        if set_port_status(current_ring, admin_down['device'], admin_down['interface'][0], "up"):
                             print("Кольцо развернуто!\nОжидаем 2мин (не прерывать!)")
 
                             time_sleep(120)      # Ожидаем 2 мин на перестройку кольца
@@ -439,9 +439,9 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                     print(f"Проблема вероятнее всего находится между {successor_name} и {successor_to}")
                                     with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
                                         ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
-                                    ring_to_save[current_ring_name] = {"default_host": admin_down[0],
-                                                                       "default_port": admin_down[2][0],
-                                                                       "default_to": admin_down[1][0],
+                                    ring_to_save[current_ring_name] = {"default_host": admin_down['device'],
+                                                                       "default_port": admin_down['interface'][0],
+                                                                       "default_to": admin_down['next_device'][0],
                                                                        "admin_down_host": successor_name,
                                                                        "admin_down_port": successor_intf,
                                                                        "admin_down_to": successor_to,
@@ -455,7 +455,8 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                     if email_notification == 'enable':
                                         email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
                                                    successor_name, successor_intf, successor_to,
-                                                   admin_down[0], admin_down[2][0], admin_down[1][0], info)
+                                                   admin_down['device'], admin_down['interface'][0],
+                                                   admin_down['next_device'][0], info)
                                         print("Отправлено письмо!")
                                     sys.exit()
 
@@ -465,8 +466,8 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 print("Возможен обрыв кабеля, либо временное отключение электроэнергии. \n"
                                       "Разворачиваем кольцо в исходное состояние, "
                                       "чтобы определить какой именно у нас случай")
-                                print(f'Закрываем порт {admin_down[2][0]} на {admin_down[0]}')
-                                if set_port_status(current_ring, admin_down[0], admin_down[2][0], "down"):
+                                print(f'Закрываем порт {admin_down["interface"][0]} на {admin_down["device"]}')
+                                if set_port_status(current_ring, admin_down['device'], admin_down['interface'][0], "down"):
                                     print(f'Поднимаем порт {successor_intf} на {successor_name}')
                                     if set_port_status(current_ring, successor_name, successor_intf, "up"):
 
@@ -481,8 +482,8 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                             #   исходном состоянии. Разворот не требуется!
                                             delete_ring_from_deploying_list(current_ring_name)
                                             print(f"Все узлы в кольце доступны, разворот не потребовался!\n"
-                                                  f"Узел {admin_down[0]}, состояние порта {admin_down[2][0]}: "
-                                                  f"admin down в сторону узла {admin_down[1][0]}")
+                                                  f"Узел {admin_down['device']}, состояние порта {admin_down['interface'][0]}: "
+                                                  f"admin down в сторону узла {admin_down['next_device'][0]}")
                                             sys.exit()
 
                                         # Если есть недоступные узлы, то необходимо выполнить проверку кольца заново
@@ -492,7 +493,8 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                     else:
                                         # В случае, когда мы положили порт в "admin down" на одном узле сети
                                         #   и не смогли открыть на другом, то необходимо поднять его обратно
-                                        if not set_port_status(current_ring, admin_down[0], admin_down[2][0], "up"):
+                                        if not set_port_status(current_ring, admin_down['device'],
+                                                               admin_down['interface'][0], "up"):
                                             # Если порт не поднялся, то информируем об ошибке
                                             pass
                                         else:
@@ -504,9 +506,9 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
 
                             with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
                                 ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
-                            ring_to_save[current_ring_name] = {"default_host": admin_down[0],
-                                                               "default_port": admin_down[2][0],
-                                                               "default_to": admin_down[1][0],
+                            ring_to_save[current_ring_name] = {"default_host": admin_down['device'],
+                                                               "default_port": admin_down['interface'][0],
+                                                               "default_to": admin_down['next_device'][0],
                                                                "admin_down_host": successor_name,
                                                                "admin_down_port": successor_intf,
                                                                "admin_down_to": successor_to,
@@ -518,10 +520,10 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                             if email_notification == 'enable':
                                 email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
                                            successor_name, successor_intf, successor_to,
-                                           admin_down[0], admin_down[2][0], admin_down[1][0])
+                                           admin_down['device'], admin_down['interface'][0], admin_down['next_device'][0])
                                 print("Отправлено письмо!")
                         else:
-                            print(f"{admin_down[0]} Не удалось поднять порт {admin_down[2][0]}")
+                            print(f"{admin_down['device']} Не удалось поднять порт {admin_down['interface'][0]}")
                             # Восстанавливаем состояние порта на преемнике
                             set_port_status(current_ring, successor_name, successor_intf, "up")
                             delete_ring_from_deploying_list(current_ring_name)
@@ -843,7 +845,7 @@ def search_admin_down(ring: dict, ring_list: list, checking_device_name: str, en
                     ad_interface.append(res_line[0])  # интерфейс со статусом "admin down"
                     # print(checking_device_name, ad_to_this_host, ad_interface)
     if ad_to_this_host and ad_interface:
-        return checking_device_name, ad_to_this_host, ad_interface
+        return {"device": checking_device_name, "next_device": ad_to_this_host, "interface": ad_interface}
     else:
         return False
 
@@ -933,17 +935,18 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                     elif status == 'up':
                         telnet.sendline('undo sh')
                         print(f'    [{device}-{interface}]undo shutdown')
-                    telnet.expect(f'-{interface}]')
+                    telnet.expect(f']')
                     telnet.sendline('quit')
                     telnet.expect(']')
                     telnet.sendline('quit')
                     telnet.expect('>')
                     telnet.sendline('save')
-                    telnet.expect(']')
+                    print(f'    <{device}>save')
+                    telnet.expect('[Y/N]')
                     telnet.sendline('Y')
-                    if telnet.expect('>', 'Please input the file name'):
-                        if telnet.expect('>', 'successfully'):
-                            print('    configuration saved!')
+                    telnet.sendline('\n')
+                    if not telnet.expect([' successfully', '>']):
+                        print('    configuration saved!')
                     telnet.sendline('quit')
                     print('    QUIT\n')
                     return 1
@@ -1360,8 +1363,8 @@ def check_admin_down(device: str):
     for d in output_check:
         print(f'\nОборудование: \033[34m{d}\033[0m {ring[d]["ip"]}')
         if output_check[d]:
-            print(f'\033[32mFind admin down!\033[0m Интерфейс: \033[32m{output_check[d][2][0]}\033[0m '
-                  f'ведет к устройству \033[32m{output_check[d][1][0]}\033[0m')
+            print(f'\033[32mFind admin down!\033[0m Интерфейс: \033[32m{output_check[d]["interface"][0]}\033[0m '
+                  f'ведет к устройству \033[32m{output_check[d]["next_device"][0]}\033[0m')
         else:
             print('\033[33mNo admin down\033[0m')
 

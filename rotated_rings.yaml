@@ -23,12 +23,4 @@ SVSL-04-GP15-SSW1_p0/1_p0/25:
   default_port: Gi0/1
   default_to: SVSL-041-Pozhar26v-ASW1
   priority: 2
-test_ring:
-  admin_down_host: SVSL-01-MotR-ASW1
-  admin_down_port: GE0/0/1
-  admin_down_to: SVSL-01-MotR-ASW2
-  default_host: SVSL-01-MotR-SSW1
-  default_port: GE0/0/2
-  default_to: SVSL-01-MotR-ASW3
-  priority: 2
 test_ring2: Deploying
