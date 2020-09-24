@@ -23,7 +23,10 @@ if __name__ == '__main__':
         sys.exit()
 
     dev = sys.argv[1]
-    current_ring, current_ring_list, current_ring_name = motr.get_ring(dev)
+    get_ring_ = motr.get_ring(dev)
+    if not get_ring_:
+        sys.exit()
+    current_ring, current_ring_list, current_ring_name = get_ring_
 
     # Заголовок
     print('\n')
