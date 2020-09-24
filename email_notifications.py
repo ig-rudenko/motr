@@ -58,19 +58,22 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
         for dev_name, status in old_devices_ping:
             if device == dev_name and not bool(findall('SSW', device)):
                 if status:
-                    status_before += ' ' * 10 + f'{device}  доступно\n'
+                    status_before += ' ' * 10 + f'доступно   {device}\n'
                 else:
-                    status_before += ' ' * 10 + f'{device}  недоступно\n'
+                    status_before += ' ' * 10 + f'недоступно {device}\n'
 
     for device in current_ring_list:
         for dev_name, status in new_devices_ping:
             if device == dev_name and not bool(findall('SSW', device)):
                 if status:
-                    status_after += ' ' * 10 + f'{device}  доступно\n'
+                    status_after += ' ' * 10 + f'доступно   {device}\n'
                 else:
-                    status_after += ' ' * 10 + f'{device}  недоступно\n'
+                    status_after += ' ' * 10 + f'недоступно {device}\n'
 
     subject = f'{ring_name} Автоматический разворот кольца FTTB'
+
+    if status_after == status_before:
+        info += '\nНичего не поменялось, знаю, но так надо :)'
 
     text = f'Состояние кольца до разворота: \n {status_before}'\
            f'\nДействия: '\

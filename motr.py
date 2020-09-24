@@ -928,27 +928,30 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                     interface = interface_normal_view(interface)
                     telnet.sendline(f"interface {interface}")
                     print(f"    [{device}]interface {interface}")
-                    telnet.expect(f'-{interface}]')
+                    telnet.expect(f']')
                     if status == 'down':
                         telnet.sendline('sh')
                         print(f'    [{device}-{interface}]shutdown')
                     elif status == 'up':
                         telnet.sendline('undo sh')
                         print(f'    [{device}-{interface}]undo shutdown')
-                    telnet.expect(f']')
-                    telnet.sendline('quit')
-                    telnet.expect(']')
-                    telnet.sendline('quit')
-                    telnet.expect('>')
-                    telnet.sendline('save')
-                    print(f'    <{device}>save')
-                    telnet.expect('[Y/N]')
-                    telnet.sendline('Y')
-                    telnet.sendline('\n')
-                    if not telnet.expect([' successfully', '>']):
-                        print('    configuration saved!')
-                    telnet.sendline('quit')
-                    print('    QUIT\n')
+                    try:
+                        telnet.expect(f']')
+                        telnet.sendline('quit')
+                        telnet.expect(']')
+                        telnet.sendline('quit')
+                        telnet.expect('>')
+                        telnet.sendline('save')
+                        print(f'    <{device}>save')
+                        telnet.expect('[Y/N]')
+                        telnet.sendline('Y')
+                        telnet.sendline('\n')
+                        if not telnet.expect([' successfully', '>']):
+                            print('    configuration saved!')
+                        telnet.sendline('quit')
+                        print('    QUIT\n')
+                    except Exception as e:
+                        print(f"    Don't saved! \nError: {e}")
                     return 1
 
                 # Cisco
@@ -971,18 +974,21 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                     elif status == 'up':
                         telnet.sendline('no sh')
                         print(f'    {device}(config-if)#no shutdown')
-                    telnet.expect(f'#')
-                    telnet.sendline('exit')
-                    telnet.expect('#')
-                    telnet.sendline('exit')
-                    telnet.expect('#')
-                    telnet.sendline('write')
-                    if telnet.expect(['[OoKk]', '#']) == 0:
-                        print("    Saved!")
-                    else:
-                        print("    Don't saved!")
-                    telnet.sendline('exit')
-                    print('    QUIT\n')
+                    try:
+                        telnet.expect(f'#')
+                        telnet.sendline('exit')
+                        telnet.expect('#')
+                        telnet.sendline('exit')
+                        telnet.expect('#')
+                        telnet.sendline('write')
+                        if telnet.expect(['[OoKk]', '#']) == 0:
+                            print("    Saved!")
+                        else:
+                            print("    Don't saved!")
+                        telnet.sendline('exit')
+                        print('    QUIT\n')
+                    except Exception as e:
+                        print(f"    Don't saved! \nError: {e}")
                     return 1
 
                 # D-Link
@@ -1002,20 +1008,25 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                         print(f'    {device}config ports {interface} medium_type fiber state enable')
                         telnet.sendline(f'config ports {interface} medium_type copper state enable')
                         print(f'    {device}config ports {interface} medium_type copper state enable')
-                    telnet.expect('#')
-                    telnet.sendline('save')
-                    if telnet.expect(['Success', '#']):
-                        print("    Don't saved!")
-                    else:
-                        print("    Saved!")
-                    telnet.sendline('logout')
-                    print('    QUIT\n')
+                    try:
+                        telnet.expect('#')
+                        telnet.sendline('save')
+                        if telnet.expect(['Success', '#']):
+                            print("    Don't saved!")
+                        else:
+                            print("    Saved!")
+                        telnet.sendline('logout')
+                        print('    QUIT\n')
+                    except Exception as e:
+                        print(f"    Don't saved! \nError: {e}")
                     return 1
 
                 # Alcatel, Linksys
                 elif bool(findall(r'SW version', version)):
                     telnet.sendline('conf t')
-                    telnet.expect('#')
+                    if telnet.expect(['Wrong number of parameters','#']) == 0:
+                        telnet.sendline('conf')
+                        telnet.expect('#')
                     telnet.sendline(f'interface ethernet {interface}')
                     if status == 'down':
                         telnet.sendline('sh')
@@ -1023,18 +1034,28 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                     elif status == 'up':
                         telnet.sendline('no sh')
                         print(f'    {device}(config-if)#no shutdown')
-                    telnet.expect(f'#')
-                    telnet.sendline('exit')
-                    telnet.expect('#')
-                    telnet.sendline('exit')
-                    telnet.expect('#')
-                    telnet.sendline('write')
-                    if telnet.expect(['succeeded', '#']) == 0:
-                        print("    Saved!")
-                    else:
-                        print("    Don't saved!")
-                    telnet.sendline('exit')
-                    print('    QUIT\n')
+                    try:
+                        telnet.expect(f'#')
+                        telnet.sendline('exit')
+                        telnet.expect('#')
+                        telnet.sendline('exit')
+                        telnet.expect('#')
+                        telnet.sendline('write')
+                        m = telnet.expect(['Unrecognized command', 'succeeded', '#'])
+                        if m == 0:
+                            telnet.sendline('copy running-config startup-config')
+                            telnet.expect('[Yes/press any key for no]')
+                            telnet.sendline('Yes')
+                            m = telnet.expect(['!@#', 'succeeded', '#'])
+                        if m == 1:
+                            print("    Saved!")
+                        else:
+                            print("    Don't saved!")
+                        telnet.sendline('exit')
+                        print('    QUIT\n')
+                    except Exception as e:
+                        print(f"    Don't saved! \nError: {e}")
+                    return 1
 
                 # Edge-Core
                 elif bool(findall(r'Hardware version', version)):
@@ -1058,18 +1079,23 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                     elif status == 'up':
                         telnet.sendline('no sh')
                         print(f'    {device}(config-if)#no shutdown')
-                    telnet.expect(f'#')
-                    telnet.sendline('exit')
-                    telnet.expect('#')
-                    telnet.sendline('exit')
-                    telnet.expect('#')
-                    telnet.sendline('write')
-                    if telnet.expect(['succeeded', '#']) == 0:
-                        print("    Saved!")
-                    else:
-                        print("    Don't saved!")
-                    telnet.sendline('exit')
-                    print('    QUIT\n')
+                    try:
+                        telnet.expect(f'#')
+                        telnet.sendline('exit')
+                        telnet.expect('#')
+                        telnet.sendline('exit')
+                        telnet.expect('#')
+                        telnet.sendline('write')
+                        telnet.expect('(Y/N)')
+                        telnet.sendline('Y')
+                        if telnet.expect(['succeeded', '#']) == 0:
+                            print("    Saved!")
+                        else:
+                            print("    Don't saved!")
+                        telnet.sendline('exit')
+                        print('    QUIT\n')
+                    except Exception as e:
+                        print(f"    Don't saved! \nError: {e}")
                     return 1
 
                 telnet.sendline('exit')
@@ -1185,109 +1211,6 @@ Options:
     --conf          Show config file path and variables
     --stat          Show information about rings
     ''')
-
-
-def neighbors(current_ring: dict, checking_device_name: str):
-    with pexpect.spawn(f"telnet {current_ring[checking_device_name]['ip']}") as telnet:
-        try:
-            if telnet.expect(["[Uu]ser", 'Unable to connect']):
-                print("    Telnet недоступен!")
-                return False
-            telnet.sendline(current_ring[checking_device_name]["user"])
-            print(f"    Login to {checking_device_name} {current_ring[checking_device_name]['ip']}")
-            telnet.expect("[Pp]ass")
-            telnet.sendline(current_ring[checking_device_name]["pass"])
-            match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
-            if match == 3:
-                print('    Неверный логин или пароль!')
-                return False
-            else:
-                telnet.sendline('show version')
-                version = ''
-                while True:
-                    m = telnet.expect([r']$', '-More-', r'>$', r'#'])
-                    version += str(telnet.before.decode('utf-8'))
-                    if m == 1:
-                        telnet.sendline(' ')
-                    else:
-                        break
-                # ZTE
-                if bool(findall(r' ZTE Corporation:', version)):
-                    print("    ZTE")
-
-                # Huawei
-                elif bool(findall(r'Unrecognized command', version)):
-                    print("    Huawei")
-                    telnet.sendline("dis ndp")
-                    output = ''
-                    while True:
-                        match = telnet.expect(['Too many parameters', ']', "  ---- More ----", '>', pexpect.TIMEOUT])
-                        page = str(telnet.before.decode('utf-8')).replace("[42D", '')
-                        # page = re.sub(" +\x08+ +\x08+", "\n", page)
-                        output += page.strip()
-                        if match == 3:
-                            telnet.sendline("quit")
-                            break
-                        elif match == 1:
-                            print("    got int des")
-                            telnet.sendline("quit")
-                            telnet.sendline("quit")
-                            break
-                        elif match == 2:
-                            telnet.send(" ")
-                            output += '\n'
-                        elif match == 0:
-                            telnet.expect('>')
-                            telnet.sendline('dis brief int')
-                        else:
-                            print("    Ошибка: timeout")
-                            break
-                    telnet.sendline("quit")
-                    output = re.sub("\n +\n", "\n", output)
-                    # print(output)
-                    with open(f'{root_dir}/templates/neighbors_huawei.template', 'r') as template_file:
-                        int_des_ = textfsm.TextFSM(template_file)
-                        result = int_des_.ParseText(output)  # Ищем интерфейсы
-                    return result
-
-                # Cisco
-                elif bool(findall(r'Cisco IOS', version)):
-                    print("    Cisco")
-                    if match == 1:
-                        telnet.sendline('enable')
-                        telnet.expect('[Pp]ass')
-                        telnet.sendline('sevaccess')
-                    telnet.expect('#')
-                    telnet.sendline("")
-
-                # D-Link
-                elif bool(findall(r'Next possible completions:', version)):
-                    print("    D-Link")
-                    telnet.sendline('enable admin')
-                    if telnet.expect(["#", "[Pp]ass"]):
-                        telnet.sendline('sevaccess')
-                        telnet.expect('#')
-                    telnet.sendline('disable clipaging')
-                    telnet.expect('#')
-                    telnet.sendline("")
-
-
-                # Alcatel, Linksys
-                elif bool(findall(r'SW version', version)):
-                    print("    Alcatel or Linksys")
-                    telnet.sendline('')
-
-                # Edge-Core
-                elif bool(findall(r'Hardware version', version)):
-                    print("    Edge-Core")
-
-                # Zyxel
-                elif bool(findall(r'ZyNOS', version)):
-                    print("    Zyxel")
-                telnet.sendline('exit')
-
-        except pexpect.exceptions.TIMEOUT:
-            print("    Время ожидания превышено! (timeout)")
 
 
 # Функции для ключевых слов
@@ -1442,6 +1365,13 @@ if __name__ == '__main__':
                         print('\n\033[32m Проверка пройдена успешно - OK!\033[0m')
                     else:
                         print('\n\033[31m Проверьте descriptions - Failed!\033[0m')
+
+                elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-ping':
+                    get_ring_ = get_ring(sys.argv[i + 1])
+                    if not get_ring_:
+                        sys.exit()
+                    ring, ring_list, ring_name = get_ring_
+                    ping_devices(ring)
 
                 else:
                     start(sys.argv[i+1])

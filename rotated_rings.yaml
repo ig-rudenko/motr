@@ -24,3 +24,11 @@ SVSL-04-GP15-SSW1_p0/1_p0/25:
   default_to: SVSL-041-Pozhar26v-ASW1
   priority: 2
 test_ring2: Deploying
+SVSL-15-Kolobova19-SSW1_p0/10_p0/12:
+  admin_down_host: SVSL-15-Kolob19-SSW1
+  admin_down_port: Gi0/12
+  admin_down_to: SVSL-151-Stolet26p4-ASW1
+  default_host: SVSL-15-Kolob19-SSW1
+  default_port: Gi0/10
+  default_to: SVSL-151-Kolobova18k1p2-ASW1
+  priority: 1
