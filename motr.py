@@ -64,43 +64,97 @@ def get_ring(device_name: str) -> tuple:
     return ()
 
 
-def ping_from_device(device_name: str, ring: dict):
-    with pexpect.spawn(f"telnet {ring[device_name]['ip']}") as telnet:
+def ping_from_device(device: str, ring: dict):
+    '''
+    Заходим на оборудование через telnet и устанавливаем состояние конкретного порта
+    :param ring"    Кольцо
+    :param device:          Имя узла сети, с которым необходимо взаимодействовать
+    :return:                В случае успеха возвращает 1, неудачи - 0
+    '''
+    with pexpect.spawn(f"telnet {ring[device]['ip']}") as telnet:
         try:
             if telnet.expect(["[Uu]ser", 'Unable to connect']):
                 print("    Telnet недоступен!")
                 return False
-            telnet.sendline(ring[device_name]['user'])
-            print(f"    Login {ring[device_name]['user']}")
+            telnet.sendline(ring[device]["user"])
+            print(f"    Login to {device}")
             telnet.expect("[Pp]ass")
-            telnet.sendline(ring[device_name]['pass'])
-            print(f"    Pass *****")
-            if telnet.expect(['>', ']', '#', 'Failed to send authen-req']) == 3:
+            telnet.sendline(ring[device]["pass"])
+            print(f"    Pass to {device}")
+            match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
+            if match == 3:
                 print('    Неверный логин или пароль!')
                 return False
-            devices_status = [(device_name, True)]
-            print(device_name, True)
+            telnet.sendline('show version')
+            version = ''
+            while True:
+                m = telnet.expect([']', '-More-', '>', '#'])
+                version += str(telnet.before.decode('utf-8'))
+                if m == 1:
+                    telnet.sendline(' ')
+                else:
+                    break
+
+            devices_status = [(device, True)]
+            print(f'Доступно   {device}')
             for dev in ring:
-                if device_name != dev:
+                if device != dev:
                     try:
                         telnet.sendline(f'ping {ring[dev]["ip"]}')
-                        match = telnet.expect(['timed out', 'time out', ' 0 percent', '[Rr]eply', 'min/avg'])
-                        if match <= 2:
+
+                        # Huawei
+                        if bool(findall(r'Error: Unrecognized command', version)):
+                            match = telnet.expect(['Request time out', 'Error', 'Reply from'])
+                        # Cisco
+                        elif bool(findall(r'Cisco IOS', version)):
+                            match = telnet.expect(['is 0 percent', 'Unrecognized host', 'is 100 percent'])
+                        # D-Link
+                        elif bool(findall(r'Next possible completions:', version)):
+                            match = telnet.expect(['Request timed out', 'Command: ping', 'Reply from'])
+                        # Alcatel, Linksys
+                        elif bool(findall(r'SW version', version)):
+                            pass
+                        # Eltex
+                        elif bool(findall(r'Active-image: ', version)):
+                            match = telnet.expect(['PING: timeout', 'Host not found', 'bytes from'])
+                        # Если не был определен вендор, то возвращаем False
+                        else:
+                            telnet.sendline('exit')
+                            return False
+
+                        if match < 2:
                             telnet.sendcontrol('c')
                             devices_status.append((dev, False))
-                            print(dev, False)
-                        elif 2 < match <= 4:
+                            print(f'Недоступно {dev}')
+                        elif match == 2:
                             telnet.sendcontrol('c')
                             devices_status.append((dev, True))
-                            print(dev, True)
-                        telnet.expect(['>', '#'])
+                            print(f'Доступно   {dev}')
+                        telnet.expect([']', '>', '#'])
                     except pexpect.exceptions.TIMEOUT:
                         devices_status.append((dev, False))
+                        print(f'Недоступно {dev} Exception: timeout')
                         telnet.sendcontrol('c')
-                        telnet.expect(['>', '#'])
-            telnet.sendline('quit')
-            telnet.sendline('logout')
-            return devices_status
+                        telnet.expect([']', '>', '#'])
+
+            # Huawei
+            if bool(findall(r'Error: Unrecognized command', version)):
+                telnet.sendline('quit')
+            # Cisco
+            elif bool(findall(r'Cisco IOS', version)):
+                telnet.sendline('exit')
+            # D-Link
+            elif bool(findall(r'Next possible completions:', version)):
+                telnet.sendline('logout')
+            # Alcatel, Linksys
+            elif bool(findall(r'SW version', version)):
+                telnet.sendline('exit')
+            # Eltex
+            elif bool(findall(r'Active-image: ', version)):
+                telnet.sendline('exit')
+
+            return devices_status           # Возвращаем список
+
         except pexpect.exceptions.TIMEOUT:
             print("    Время ожидания превышено! (timeout)")
             return False
@@ -1098,10 +1152,13 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                         print(f"    Don't saved! \nError: {e}")
                     return 1
 
+                # Если не был определен вендор, то возвращаем False
                 telnet.sendline('exit')
+                return False
 
         except pexpect.exceptions.TIMEOUT:
             print("    Время ожидания превышено! (timeout)")
+            return False
 
 
 def find_port_by_desc(ring: dict, main_name: str, target_name: str):
