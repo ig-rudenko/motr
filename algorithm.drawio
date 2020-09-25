@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2020-09-24T14:33:34.212Z" agent="5.0 (X11)" etag="EbzlSA9YZYbmpZEoCsJ0" version="13.7.5" type="github">
+<mxfile host="app.diagrams.net" modified="2020-09-25T12:00:35.544Z" agent="5.0 (X11)" etag="CnjnhS2ZRivUb5bUgG3_" version="13.7.5" type="github">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
-    <mxGraphModel dx="1102" dy="724" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+    <mxGraphModel dx="1574" dy="1034" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
       <root>
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-0" />
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0" />
@@ -127,7 +127,7 @@
           <mxGeometry x="300" y="1260" width="160" height="100" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-32" value="Порт закрыт" style="rounded=1;whiteSpace=wrap;html=1;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;arcSize=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
-          <mxGeometry x="160" y="1300" width="120" height="60" as="geometry" />
+          <mxGeometry x="160" y="1410" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-38" value="ДА" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="69zd2P_aMQ5EqwOzP3Yx-40" target="69zd2P_aMQ5EqwOzP3Yx-44" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -220,7 +220,7 @@
           <mxGeometry x="470" y="1260" width="220" height="100" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-73" value="Порт открыт" style="rounded=0;whiteSpace=wrap;html=1;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
-          <mxGeometry x="1181.25" y="1000.01" width="120" height="60" as="geometry" />
+          <mxGeometry x="1178.75" y="1110" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-76" value="" style="strokeWidth=3;html=1;shape=mxgraph.flowchart.annotation_2;align=left;labelPosition=right;pointerEvents=1;rotation=-180;gradientColor=#ffa500;fillColor=#ffcd28;strokeColor=#d79b00;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="1530" y="200" width="80" height="510" as="geometry" />
@@ -265,8 +265,8 @@
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-100" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;gradientColor=#b3b3b3;fillColor=#f5f5f5;strokeColor=#666666;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="69zd2P_aMQ5EqwOzP3Yx-97" target="69zd2P_aMQ5EqwOzP3Yx-99" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-97" value="&lt;div&gt;Закрываем&lt;/div&gt;&lt;div&gt;порт на преемнике&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;shadow=0;strokeColor=#666666;strokeWidth=1;fillColor=#f5f5f5;gradientColor=#b3b3b3;spacing=6;spacingTop=-4;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
-          <mxGeometry x="342.5" y="1700" width="120" height="60" as="geometry" />
+        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-97" value="&lt;div&gt;Закрываем&lt;/div&gt;&lt;div&gt;порт на &lt;b&gt;&amp;lt;successor_name&amp;gt;&lt;/b&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;shadow=0;strokeWidth=3;fillColor=#bac8d3;spacing=6;spacingTop=-4;sketch=0;strokeColor=#FF0000;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="338.75" y="1700" width="127.5" height="60" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-103" value="&lt;font style=&quot;font-size: 14px&quot;&gt;ДА&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="69zd2P_aMQ5EqwOzP3Yx-99" target="69zd2P_aMQ5EqwOzP3Yx-102" edge="1">
           <mxGeometry x="-0.697" y="10" relative="1" as="geometry">
@@ -279,13 +279,13 @@
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-99" value="ЗАКРЫТ?" style="rhombus;whiteSpace=wrap;html=1;strokeColor=#d6b656;gradientColor=#ffd966;fillColor=#fff2cc;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="362.5" y="1800" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-105" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;gradientColor=#7ea6e0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="69zd2P_aMQ5EqwOzP3Yx-102" target="69zd2P_aMQ5EqwOzP3Yx-104" edge="1">
+        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-105" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fillColor=#76608a;strokeColor=#432D57;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="69zd2P_aMQ5EqwOzP3Yx-102" target="69zd2P_aMQ5EqwOzP3Yx-104" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-102" value="&lt;div&gt;Открываем порт&lt;/div&gt;&lt;div&gt;на узле агрегации&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;gradientColor=#7ea6e0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
-          <mxGeometry x="690" y="1810" width="120" height="60" as="geometry" />
+        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-102" value="&lt;div&gt;Открываем порт&lt;/div&gt;&lt;div&gt;на узле &lt;b&gt;&amp;lt;admin_down_device&amp;gt;&lt;/b&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fillColor=#76608a;strokeWidth=3;fontColor=#ffffff;strokeColor=#00FF00;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="667.5" y="1805" width="165" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-109" value="&lt;font style=&quot;font-size: 14px&quot;&gt;ДА&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=3;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="69zd2P_aMQ5EqwOzP3Yx-104" target="69zd2P_aMQ5EqwOzP3Yx-108" edge="1">
+        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-109" value="&lt;font style=&quot;font-size: 14px&quot;&gt;ДА&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=3;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="69zd2P_aMQ5EqwOzP3Yx-104" target="Vo_WulkDOra8i03JCjhw-39" edge="1">
           <mxGeometry x="-0.6552" y="10" relative="1" as="geometry">
             <mxPoint as="offset" />
           </mxGeometry>
@@ -300,7 +300,7 @@
           <mxGeometry x="710" y="1920" width="80" height="80" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-108" value="Ожидаем 2 мин" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.delay;whiteSpace=wrap;gradientColor=none;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
-          <mxGeometry x="990" y="2000" width="100" height="60" as="geometry" />
+          <mxGeometry x="1198.75" y="2130" width="100" height="60" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-111" value="&lt;div&gt;E-mail&lt;br&gt;&lt;/div&gt;&lt;div&gt;Порт не закрыт&lt;/div&gt;&lt;div&gt;прерывание&lt;/div&gt;&lt;div&gt;см. логи&lt;br&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;arcSize=0;strokeWidth=4;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="600" y="610" width="120" height="70" as="geometry" />
@@ -330,8 +330,8 @@
           <mxGeometry x="321.25" y="1950" width="162.5" height="90" as="geometry" />
         </mxCell>
         <mxCell id="Vo_WulkDOra8i03JCjhw-24" value="&lt;font style=&quot;font-size: 14px&quot;&gt;НЕТ&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-25" target="Vo_WulkDOra8i03JCjhw-28">
-          <mxGeometry x="0.0014" y="25" relative="1" as="geometry">
-            <mxPoint x="-25" y="-25" as="offset" />
+          <mxGeometry x="-0.0849" y="55" relative="1" as="geometry">
+            <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
         <mxCell id="Vo_WulkDOra8i03JCjhw-33" value="&lt;font style=&quot;font-size: 14px&quot;&gt;ДА&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-25" target="Vo_WulkDOra8i03JCjhw-32">
@@ -343,30 +343,61 @@
           <mxGeometry x="710" y="2180" width="80" height="80" as="geometry" />
         </mxCell>
         <mxCell id="Vo_WulkDOra8i03JCjhw-26" value="выход" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.terminator;whiteSpace=wrap;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
-          <mxGeometry x="700" y="2450" width="100" height="60" as="geometry" />
+          <mxGeometry x="757.81" y="2770" width="100" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="Vo_WulkDOra8i03JCjhw-27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;gradientColor=#b3b3b3;fillColor=#f5f5f5;strokeColor=#666666;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-28" target="Vo_WulkDOra8i03JCjhw-26">
+        <mxCell id="Vo_WulkDOra8i03JCjhw-27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;gradientColor=#b3b3b3;fillColor=#f5f5f5;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-28" target="Vo_WulkDOra8i03JCjhw-26">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="Vo_WulkDOra8i03JCjhw-28" value="&lt;div&gt;E-mail&lt;br&gt;&lt;/div&gt;С указанием ошибки" style="rounded=1;whiteSpace=wrap;html=1;arcSize=0;strokeWidth=2;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
-          <mxGeometry x="668.75" y="2330" width="162.5" height="90" as="geometry" />
+        <mxCell id="Vo_WulkDOra8i03JCjhw-28" value="&lt;div&gt;E-mail&lt;br&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;Были приняты попытки развернуть кольцо &lt;b&gt;&amp;lt;ring_name&amp;gt;&lt;/b&gt;.&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;В процессе выполнения был установлен статус порта &lt;b&gt;&amp;lt;successor_intf&amp;gt;&lt;/b&gt; у &lt;b&gt;&amp;lt;successor_name&amp;gt;&lt;/b&gt; &quot;admin down&quot;, а затем возникла ошибка:&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;&amp;lt;Error&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;на узле &lt;b&gt;&amp;lt;admin_down_device&amp;gt;&lt;/b&gt; в попытке поднять порт &lt;b&gt;&amp;lt;admin_down_intf&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;Далее возникла ошибка в процессе возврата порта &lt;b&gt;&amp;lt;successor_intf&amp;gt;&lt;/b&gt; на &lt;b&gt;&amp;lt;successor_name&amp;gt;&lt;/b&gt; в исходное состояние (up)&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;error&amp;gt;&lt;/b&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=0;strokeWidth=2;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+          <mxGeometry x="610" y="2410" width="395.62" height="259" as="geometry" />
         </mxCell>
-        <mxCell id="Vo_WulkDOra8i03JCjhw-30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;gradientColor=#b3b3b3;fillColor=#f5f5f5;strokeColor=#666666;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-29" target="Vo_WulkDOra8i03JCjhw-25">
+        <mxCell id="Vo_WulkDOra8i03JCjhw-30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fillColor=#d0cee2;strokeColor=#56517e;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-29" target="Vo_WulkDOra8i03JCjhw-25">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="Vo_WulkDOra8i03JCjhw-29" value="&lt;div&gt;Открываем&lt;/div&gt;&lt;div&gt;порт на преемнике&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;shadow=0;strokeColor=#666666;strokeWidth=1;fillColor=#f5f5f5;gradientColor=#b3b3b3;spacing=6;spacingTop=-4;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
-          <mxGeometry x="690" y="2080" width="120" height="60" as="geometry" />
+        <mxCell id="Vo_WulkDOra8i03JCjhw-29" value="&lt;div&gt;Открываем&lt;/div&gt;&lt;div&gt;порт на &lt;b&gt;&amp;lt;successor_name&amp;gt;&lt;/b&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;shadow=0;strokeWidth=3;fillColor=#bac8d3;spacing=6;spacingTop=-4;strokeColor=#00FF00;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+          <mxGeometry x="665" y="2070" width="170" height="70" as="geometry" />
         </mxCell>
         <mxCell id="Vo_WulkDOra8i03JCjhw-35" value="&lt;font style=&quot;font-size: 13px&quot;&gt;НЕТ&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-32" target="Vo_WulkDOra8i03JCjhw-34">
-          <mxGeometry x="-0.6667" relative="1" as="geometry">
-            <mxPoint as="offset" />
+          <mxGeometry x="0.0285" y="-240" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="2540" />
+              <mxPoint x="560" y="2540" />
+            </Array>
+            <mxPoint x="240" y="-241" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Vo_WulkDOra8i03JCjhw-38" value="&lt;font style=&quot;font-size: 13px&quot;&gt;ДА&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-32" target="Vo_WulkDOra8i03JCjhw-37">
+          <mxGeometry x="-0.8" y="-10" relative="1" as="geometry">
+            <mxPoint x="-1" as="offset" />
           </mxGeometry>
         </mxCell>
         <mxCell id="Vo_WulkDOra8i03JCjhw-32" value="&lt;div&gt;Конфигурация&lt;/div&gt;&lt;div&gt;сохранена?&lt;br&gt;&lt;/div&gt;" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.decision;whiteSpace=wrap;rounded=0;shadow=0;glass=0;sketch=0;gradientColor=#ffd966;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
           <mxGeometry x="510" y="2170" width="100" height="100" as="geometry" />
         </mxCell>
         <mxCell id="Vo_WulkDOra8i03JCjhw-34" value="&lt;div style=&quot;font-size: 13px&quot;&gt;E-mail&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;Были приняты попытки развернуть кольцо &lt;b&gt;&amp;lt;ring_name&amp;gt;&lt;/b&gt;.&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;В процессе выполнения был установлен статус порта &lt;b&gt;&amp;lt;successor_intf&amp;gt;&lt;/b&gt; у &lt;b&gt;&amp;lt;successor_name&amp;gt;&lt;/b&gt; &quot;admin down&quot;, а затем возникла ошибка:&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;&amp;lt;Error&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;на узле &lt;b&gt;&amp;lt;admin_down_device&amp;gt;&lt;/b&gt; в попытке поднять порт &lt;b&gt;&amp;lt;admin_down_intf&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;Далее порт &lt;b&gt;&amp;lt;successor_intf&amp;gt;&lt;/b&gt; на &lt;b&gt;&amp;lt;successor_name&amp;gt;&lt;/b&gt; был возвращен в исходное состояние (up), но при сохранении конфигурации возникла ошибка&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;&amp;lt;error&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;просьба вручную сохранить конфигурацию &lt;b&gt;&amp;lt;admin_down_ip&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;rounded=0;shadow=0;strokeWidth=2;glass=0;sketch=0;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
-          <mxGeometry x="140" y="2360" width="440" height="270" as="geometry" />
+          <mxGeometry x="60" y="2560" width="440" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="Vo_WulkDOra8i03JCjhw-37" value="&lt;div style=&quot;font-size: 13px&quot;&gt;E-mail&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;Были приняты попытки развернуть кольцо &lt;b&gt;&amp;lt;ring_name&amp;gt;&lt;/b&gt;.&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;В процессе выполнения был установлен статус порта &lt;b&gt;&amp;lt;successor_intf&amp;gt;&lt;/b&gt; у &lt;b&gt;&amp;lt;successor_name&amp;gt;&lt;/b&gt; &quot;admin down&quot;, а затем возникла ошибка:&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;&amp;lt;Error&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;на узле &lt;b&gt;&amp;lt;admin_down_device&amp;gt;&lt;/b&gt; в попытке поднять порт &lt;b&gt;&amp;lt;admin_down_intf&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;Далее порт &lt;b&gt;&amp;lt;successor_intf&amp;gt;&lt;/b&gt; на &lt;b&gt;&amp;lt;successor_name&amp;gt;&lt;/b&gt; был возвращен в исходное состояние (up)&lt;/div&gt;&lt;div style=&quot;font-size: 13px&quot;&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;rounded=0;shadow=0;strokeWidth=2;glass=0;sketch=0;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+          <mxGeometry x="60" y="2290" width="440" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="Vo_WulkDOra8i03JCjhw-40" value="&lt;font style=&quot;font-size: 14px&quot;&gt;ДА&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;strokeColor=#000000;strokeWidth=1;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-39" target="69zd2P_aMQ5EqwOzP3Yx-108">
+          <mxGeometry x="-0.6822" y="10" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Vo_WulkDOra8i03JCjhw-46" value="&lt;font style=&quot;font-size: 14px&quot;&gt;НЕТ&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-39" target="Vo_WulkDOra8i03JCjhw-45">
+          <mxGeometry x="-0.2861" y="29" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Vo_WulkDOra8i03JCjhw-39" value="&lt;div&gt;Конфигурация&lt;/div&gt;&lt;div&gt;сохранена?&lt;br&gt;&lt;/div&gt;" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.decision;whiteSpace=wrap;rounded=0;shadow=0;glass=0;sketch=0;gradientColor=#ffd966;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+          <mxGeometry x="890" y="1910" width="100" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="Vo_WulkDOra8i03JCjhw-47" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="Vo_WulkDOra8i03JCjhw-45" target="69zd2P_aMQ5EqwOzP3Yx-108">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Vo_WulkDOra8i03JCjhw-45" value="&lt;div&gt;Запоминаем, что на узле &lt;b&gt;&amp;lt;admin_down_device&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;не сохранена конфигурация&lt;br&gt;&lt;/div&gt;&amp;nbsp;после изменения состояния порта &lt;b&gt;&amp;lt;admin_down_intf&amp;gt;&lt;/b&gt; на &quot;admin up&quot;" style="whiteSpace=wrap;html=1;rounded=0;shadow=0;strokeWidth=2;glass=0;sketch=0;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+          <mxGeometry x="930" y="2107.5" width="210" height="105" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
