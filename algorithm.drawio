@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2020-09-30T07:33:38.179Z" agent="5.0 (X11)" etag="GFiPp9SVQ-uBdpf9_p0n" version="13.7.5" type="github">
+<mxfile host="app.diagrams.net" modified="2020-09-30T14:26:41.956Z" agent="5.0 (X11)" etag="-TNiH3XXdKkkcTWXZvg-" version="13.7.5" type="github">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
-    <mxGraphModel dx="1956" dy="938" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="4400" pageHeight="4681" math="0" shadow="0">
+    <mxGraphModel dx="1956" dy="1106" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="4400" pageHeight="4681" math="0" shadow="0">
       <root>
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-0" />
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0" />
@@ -103,7 +103,7 @@
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-19" value="&lt;div&gt;больше&lt;/div&gt;&lt;div&gt;3х попыток&lt;br&gt;&lt;/div&gt;?" style="rhombus;whiteSpace=wrap;html=1;gradientColor=#ffd966;fillColor=#fff2cc;strokeColor=#d6b656;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="320" y="830" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-32" value="&lt;div&gt;Порт закрыт&lt;/div&gt;&amp;lt;DONE&amp;gt;" style="whiteSpace=wrap;html=1;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;arcSize=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-32" value="&lt;div&gt;Порт закрыт&lt;/div&gt;&lt;b&gt;&amp;lt;DONE&amp;gt;&lt;/b&gt;" style="whiteSpace=wrap;html=1;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;arcSize=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="160" y="1190" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-38" value="ДА" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="69zd2P_aMQ5EqwOzP3Yx-40" target="69zd2P_aMQ5EqwOzP3Yx-44" edge="1">
@@ -209,7 +209,7 @@
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-71" value="&lt;div align=&quot;center&quot;&gt;Порт закрыт, но конфигурация не сохранена.&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;DONT SAVE&amp;gt;&lt;/b&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=4;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="280" y="1020" width="160" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-73" value="&lt;div&gt;Порт открыт&lt;/div&gt;&amp;lt;DONE&amp;gt;" style="whiteSpace=wrap;html=1;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-73" value="&lt;div&gt;Порт открыт&lt;/div&gt;&lt;b&gt;&amp;lt;DONE&amp;gt;&lt;/b&gt;" style="whiteSpace=wrap;html=1;gradientColor=#97d077;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="1180" y="1110" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-76" value="" style="strokeWidth=3;html=1;shape=mxgraph.flowchart.annotation_2;align=left;labelPosition=right;pointerEvents=1;rotation=-180;gradientColor=#ffa500;fillColor=#ffcd28;strokeColor=#d79b00;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
@@ -295,7 +295,7 @@
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-111" value="&lt;div&gt;Порт не закрыт&lt;/div&gt;&lt;div&gt;прерывание&lt;/div&gt;&lt;div&gt;см. логи&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;Exception: EOF&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;Exception: TIMEOUT&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;Exception: cant set port status&amp;gt;&lt;/b&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;arcSize=0;strokeWidth=4;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="600" y="570" width="230" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-113" value="&lt;div&gt;Порт не закрыт&lt;/div&gt;&lt;div&gt;не удалось установить порт в состояние &quot;admin down&quot;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;Exception: cant set down&amp;gt;&lt;/b&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;arcSize=0;strokeWidth=4;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-113" value="&lt;div&gt;Порт не закрыт&lt;/div&gt;&lt;div&gt;не удалось установить порт в состояние &quot;admin down&quot;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;cant set down&amp;gt;&lt;/b&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;arcSize=0;strokeWidth=4;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="259.38" y="590" width="201.25" height="90" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-116" value="&lt;div&gt;Прерывание&lt;br&gt;&lt;/div&gt;&lt;div align=&quot;center&quot;&gt;Порт закрыт, но конфигурация не сохранена.&lt;/div&gt;&lt;div align=&quot;center&quot;&gt;&lt;b&gt;&amp;lt;Exception: DONT SAVE&amp;gt;&lt;/b&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=4;shadow=0;glass=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
@@ -307,7 +307,7 @@
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-120" value="&lt;div&gt;Порт не закрыт&lt;/div&gt;&lt;div&gt;прерывание&lt;/div&gt;&lt;div&gt;см. логи&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;Exception: EOF&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;Exception: TIMEOUT&amp;gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;Exception: cant set port status&amp;gt;&lt;/b&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;arcSize=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="1600" y="580" width="230" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-122" value="&lt;div&gt;Порт не открыт&lt;/div&gt;&lt;div&gt;не удалось установить порт в состояние &quot;up&quot;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;Exception: cant set up&amp;gt;&lt;/b&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;arcSize=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+        <mxCell id="69zd2P_aMQ5EqwOzP3Yx-122" value="&lt;div&gt;Порт не открыт&lt;/div&gt;&lt;div&gt;не удалось установить порт в состояние &quot;up&quot;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;lt;cant set up&amp;gt;&lt;/b&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;arcSize=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="1295" y="620" width="170" height="90" as="geometry" />
         </mxCell>
         <mxCell id="69zd2P_aMQ5EqwOzP3Yx-125" value="выход" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.terminator;whiteSpace=wrap;gradientColor=#ea6b66;fillColor=#f8cecc;strokeColor=#b85450;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
