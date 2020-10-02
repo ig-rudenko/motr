@@ -21,7 +21,7 @@ def send_text(subject: str, text: str):
         server.login(server_login, server_password)
 
         server.sendmail(from_addr='irudenko@sevtelecom.ru',
-                        to_addrs=to_addresses[1],
+                        to_addrs=to_addresses,
                         msg=message.as_string())
         server.quit()
 

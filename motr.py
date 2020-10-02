@@ -470,94 +470,396 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                     successor_to = double_current_ring_list[current_ring_list.index(successor_name) + i]
                     successor_intf = find_port_by_desc(current_ring, successor_name, successor_to)
 
-                    print(f'Закрываем порт {successor_intf} на {successor_name}')
-                    if set_port_status(current_ring,
-                                       successor_name, successor_intf, "down"):   # Закрываем порт на "преемнике"
+                    # -----------------------------Закрываем порт на преемнике------------------------------------------
+                    try_to_set_port = 2
+                    while try_to_set_port > 0:
+                        print(f'Закрываем порт {successor_intf} на {successor_name}')
+                        operation_port_down = set_port_status(current_ring=current_ring,
+                                                              device=successor_name,
+                                                              interface=successor_intf,
+                                                              status="down")
+                        # Если поймали исключение, то пробуем еще один раз
+                        if 'Exception' in operation_port_down and 'SAVE' not in operation_port_down:
+                            try_to_set_port -= 1
+                            if try_to_set_port > 1:
+                                print('\nПробуем еще один раз закрыть порт\n')
+                            continue
+                        break
+
+                    # ---------------------------Если порт на преемнике НЕ закрыли--------------------------------------
+                    if operation_port_down == 'telnet недоступен':
+                        email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                        text=f'Не удалось подключиться к {successor_name} по telnet!'
+                                             f'({current_ring[successor_name]["ip"]})')
+
+                    elif operation_port_down == 'неверный логин или пароль':
+                        email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                        text=f'Не удалось зайти на оборудование {successor_name}'
+                                             f'({current_ring[successor_name]["ip"]}) {operation_port_down}')
+
+                    elif operation_port_down == 'cant set down':
+                        email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                        text=f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
+                                             f'не удалось закрыть порт {successor_intf}!')
+
+                    elif operation_port_down == 'cant status':
+                        email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                        text=f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
+                                             f'была послана команда закрыть порт {successor_intf}, но '
+                                             f'не удалось распознать интерфейсы для проверки его состояния(см. логи)\n'
+                                             f'Отправлена команда на возврат порта в прежнее состояние (up)')
+
+                    elif 'DONT SAVE' in operation_port_down:
+                        # открываем порт
+                        try_to_set_port = 2
+                        while try_to_set_port > 0:
+                            print(f'Открываем порт {successor_intf} на {successor_name}')
+                            operation_port_up = set_port_status(current_ring=current_ring,
+                                                                device=successor_name,
+                                                                interface=successor_intf,
+                                                                status="up")
+                            # Если поймали исключение, то пробуем еще один раз
+                            if 'Exception' in operation_port_up and 'SAVE' not in operation_port_up:
+                                try_to_set_port -= 1
+                                if try_to_set_port > 1:
+                                    print('\nПробуем еще один раз открыть порт\n')
+                                continue
+                            break
+                        if operation_port_up == 'DONE' or 'DONT SAVE' in operation_port_up:
+                            email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                            text=f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
+                                                 f'после закрытия порта {successor_intf} не удалось сохранить '
+                                                 f'конфигурацию!\nВернул порт в исходное состояние (up)\n'
+                                                 f'Разворот кольца прерван')
+                        else:
+                            email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                            text=f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
+                                                 f'после закрытия порта {successor_intf} не удалось сохранить '
+                                                 f'конфигурацию!\nПопытка поднять порт обратно закончилась неудачей: '
+                                                 f'{operation_port_up}.\n'
+                                                 f'Разворот кольца прерван')
+                        delete_ring_from_deploying_list(current_ring_name)
+                        sys.exit()
+                        # Выход
+
+                    elif operation_port_down == 'Exception: cant set port status':
+                        email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                        text=f'Возникло прерывание в момент закрытия порта {successor_intf} '
+                                             f'на оборудовании {successor_name} ({current_ring[successor_name]["ip"]})')
+
+                    elif 'Exception' in operation_port_down:
+                        email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                        text=f'Возникло прерывание после подключения к оборудованию '
+                                             f'{successor_name} ({current_ring[successor_name]["ip"]})')
+
+                    # ------------------------------------Если порт закрыли---------------------------------------------
+                    elif operation_port_down == 'DONE':
+
+                        # ---------------------Поднимаем порт на admin_down_device--------------------------------------
                         print(f'Поднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}')
-                        if set_port_status(current_ring, admin_down['device'], admin_down['interface'][0], "up"):
-                            print("Кольцо развернуто!\nОжидаем 2мин (не прерывать!)")
+                        operation_port_up = set_port_status(current_ring=current_ring,
+                                                            device=admin_down['device'],
+                                                            interface=admin_down['interface'][0],
+                                                            status="up")
 
-                            time_sleep(120)      # Ожидаем 2 мин на перестройку кольца
-                            # Пингуем заново все устройства в кольце с агрегации
-                            new_ping_status = ping_from_device(current_ring_list[0], current_ring)
-                            for _, available in new_ping_status:
-                                if not available:
+                        # Если проблема возникла до стадии сохранения
+                        if 'SAVE' not in operation_port_up and 'DONE' not in operation_port_up:
+                            # Восстанавливаем порт на преемнике в исходное состояние (up)
+                            print(f'\nВосстанавливаем порт {successor_intf} на {successor_name} в исходное состояние (up)\n')
+                            operation_port_reset = set_port_status(current_ring=current_ring,
+                                                                   device=successor_name,
+                                                                   interface=successor_intf,
+                                                                   status="up")
+                            if operation_port_reset == 'DONE':
+                                email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                                text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
+                                                     f'В процессе выполнения был установлен статус порта '
+                                                     f'{successor_intf} у {successor_name} "admin down", '
+                                                     f'а затем возникла ошибка: {operation_port_up} на узле '
+                                                     f'{admin_down["device"]} в попытке поднять порт '
+                                                     f'{admin_down["interface"][0]}\nДалее порт {successor_intf} '
+                                                     f'на {successor_name} был возвращен в исходное состояние (up)')
+                            # Если проблема возникла до стадии сохранения
+                            elif 'SAVE' not in operation_port_reset:
+                                email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                                text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
+                                                     f'В процессе выполнения был установлен статус порта '
+                                                     f'{successor_intf} у {successor_name} "admin down", '
+                                                     f'а затем возникла ошибка: {operation_port_up} на узле '
+                                                     f'{admin_down["device"]} в попытке поднять порт '
+                                                     f'{admin_down["interface"][0]}\nДалее возникла ошибка в процессе '
+                                                     f'возврата порта {successor_intf} на {successor_name} в '
+                                                     f'исходное состояние (up) \nError: {operation_port_reset}')
+                            # Если проблема возникла на стадии сохранения
+                            elif 'SAVE' in operation_port_reset:
+                                email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                                text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
+                                                     f'В процессе выполнения был установлен статус порта '
+                                                     f'{successor_intf} у {successor_name} "admin down", '
+                                                     f'а затем возникла ошибка: {operation_port_up} на узле '
+                                                     f'{admin_down["device"]} в попытке поднять порт '
+                                                     f'{admin_down["interface"][0]}\nДалее порт {successor_intf} '
+                                                     f'на {successor_name} был возвращен в исходное состояние (up), '
+                                                     f'но на стадии сохранения возникла ошибка: {operation_port_reset}'
+                                                     f'\nПроверьте и сохраните конфигурацию!')
+                            delete_ring_from_deploying_list(current_ring_name)
+                            sys.exit()
+
+                        # Если проблема возникла во время стадии сохранения
+                        elif 'SAVE' in operation_port_up:
+                            email.send_text(subject=f'{current_ring_name} Автоматический разворот кольца FTTB',
+                                            text=f'Развернуто кольцо'
+                                                 f'\nДействия: '
+                                                 f'\n1)  На {successor_name} порт {successor_intf} - "admin down" '
+                                                 f'в сторону узла {successor_to}\n'
+                                                 f'2)  На {admin_down["device"]} порт {admin_down["interface"]} '
+                                                 f'- "up" в сторону узла {admin_down["next_device"]}\n')
+                            delete_ring_from_deploying_list(current_ring_name)
+                            sys.exit()
+
+                        # --------------------------------Порт подняли-----------------------------
+                        elif operation_port_up == 'DONE':
+                            wait_step = 2
+                            all_avaliable = 0
+                            while wait_step > 0:
+                                # Ждем 50 секунд
+                                print('Ожидаем 50 сек, не прерывать\n'
+                                      '0                       25                       50с')
+                                time_sleep(50)
+                                # Пингуем заново все устройства в кольце с агрегации
+                                new_ping_status = ping_from_device(current_ring_list[0], current_ring)
+                                for _, available in new_ping_status:
+                                    if not available:
+                                        break  # Если есть недоступное устройство
+                                else:
+                                    print("Все устройства в кольце после разворота доступны!\n")
+                                    all_avaliable = 1  # Если после разворота все устройства доступны
+                                if all_avaliable or wait_step == 1:
                                     break
-                            else:
-                                print("Все устройства в кольце после разворота доступны!\n")
+                                # Если по истечении 50с остались недоступные устройства, то ждем еще 50с
+                                wait_step -= 1
 
-                                if this_is_the_second_loop:
-                                    # Если на втором проходе у нас при развороте кольца, снова все узлы доступны, то
-                                    # это обрыв кабеля, в таком случае оставляем кольцо в развернутом виде
+                            # После разворота остались недоступными некоторые устройства
+                            if not all_avaliable:
+                                # Разворот выполнен!
+                                with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
+                                    ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
+                                ring_to_save[current_ring_name] = {"default_host": admin_down['device'],
+                                                                   "default_port": admin_down['interface'][0],
+                                                                   "default_to": admin_down['next_device'][0],
+                                                                   "admin_down_host": successor_name,
+                                                                   "admin_down_port": successor_intf,
+                                                                   "admin_down_to": successor_to,
+                                                                   "priority": 1}
+                                with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
+                                    yaml.dump(ring_to_save, save_ring, default_flow_style=False)
+                                # Отправка e-mail
+                                if email_notification == 'enable':
+                                    email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
+                                               successor_name, successor_intf, successor_to,
+                                               admin_down['device'], admin_down['interface'][0],
+                                               admin_down['next_device'][0])
+                                    print("Отправлено письмо!")
+                                sys.exit()
 
-                                    print(f"Проблема вероятнее всего находится между {successor_name} и {successor_to}")
-                                    with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
-                                        ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
-                                    ring_to_save[current_ring_name] = {"default_host": admin_down['device'],
-                                                                       "default_port": admin_down['interface'][0],
-                                                                       "default_to": admin_down['next_device'][0],
-                                                                       "admin_down_host": successor_name,
-                                                                       "admin_down_port": successor_intf,
-                                                                       "admin_down_to": successor_to,
-                                                                       "priority": 2}
-                                    with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
-                                        yaml.dump(ring_to_save, save_ring, default_flow_style=False)
+                            # Если на втором проходе у нас при развороте кольца, снова все узлы доступны, то
+                            # это обрыв кабеля, в таком случае оставляем кольцо в развернутом виде
+                            if this_is_the_second_loop:
+                                print(f"Проблема вероятнее всего находится между {successor_name} и {successor_to}")
+                                with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
+                                    ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
+                                ring_to_save[current_ring_name] = {"default_host": admin_down['device'],
+                                                                   "default_port": admin_down['interface'][0],
+                                                                   "default_to": admin_down['next_device'][0],
+                                                                   "admin_down_host": successor_name,
+                                                                   "admin_down_port": successor_intf,
+                                                                   "admin_down_to": successor_to,
+                                                                   "priority": 2}
+                                with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
+                                    yaml.dump(ring_to_save, save_ring, default_flow_style=False)
 
-                                    # Отправка e-mail
-                                    info = f'Возможен обрыв кабеля между {successor_name} и ' \
-                                           f'{double_current_ring_list[current_ring_list.index(successor_name) + i]}\n'
-                                    if email_notification == 'enable':
-                                        email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
-                                                   successor_name, successor_intf, successor_to,
-                                                   admin_down['device'], admin_down['interface'][0],
-                                                   admin_down['next_device'][0], info)
-                                        print("Отправлено письмо!")
-                                    sys.exit()
+                                # Отправка e-mail
+                                info = f'Возможен обрыв кабеля между {successor_name} и ' \
+                                       f'{double_current_ring_list[current_ring_list.index(successor_name) + i]}\n'
+                                if email_notification == 'enable':
+                                    email.send(ring_name=current_ring_name,
+                                               current_ring_list=current_ring_list,
+                                               old_devices_ping=devices_ping,
+                                               new_devices_ping=new_ping_status,
+                                               admin_down_host=successor_name,
+                                               admin_down_port=successor_intf,
+                                               admin_down_to=successor_to,
+                                               up_host=admin_down['device'],
+                                               up_port=admin_down['interface'][0],
+                                               up_to=admin_down['next_device'][0],
+                                               info=info)
+                                    print("Отправлено письмо!")
+                                sys.exit()
 
-                                # Если после разворота все узлы сети доступны, то это может быть обрыв кабеля, либо
-                                #   временное отключение электроэнергии. Разворачиваем кольцо в исходное состояние,
-                                #   чтобы определить какой именно у нас случай
-                                print("Возможен обрыв кабеля, либо временное отключение электроэнергии. \n"
-                                      "Разворачиваем кольцо в исходное состояние, "
-                                      "чтобы определить какой именно у нас случай")
+                            # Если после разворота все узлы сети доступны, то это может быть обрыв кабеля, либо
+                            #   временное отключение электроэнергии. Разворачиваем кольцо в исходное состояние,
+                            #   чтобы определить какой именно у нас случай
+                            print("Возможен обрыв кабеля, либо временное отключение электроэнергии. \n"
+                                  "Разворачиваем кольцо в исходное состояние, "
+                                  "чтобы определить какой именно у нас случай")
+                            try_to_set_port2 = 2
+                            # ------------------Закрываем порт на admin_down_device
+                            while try_to_set_port2 > 0:
                                 print(f'Закрываем порт {admin_down["interface"][0]} на {admin_down["device"]}')
-                                if set_port_status(current_ring, admin_down['device'], admin_down['interface'][0], "down"):
-                                    print(f'Поднимаем порт {successor_intf} на {successor_name}')
-                                    if set_port_status(current_ring, successor_name, successor_intf, "up"):
+                                operation_port_down2 = set_port_status(current_ring=current_ring,
+                                                                       device=admin_down['device'],
+                                                                       interface=admin_down['interface'][0],
+                                                                       status="down")
+                                # Если возникло прерывание до стадии сохранения, то пытаемся закрыть порт еще раз
+                                if try_to_set_port2 == 2 and 'Exception' in operation_port_down2 \
+                                        and 'SAVE' not in operation_port_down2:
+                                    try_to_set_port2 -= 1
+                                    # Пингуем заново все устройства в кольце
+                                    ping_stat = ping_devices(current_ring)
+                                    for _, available in ping_stat:
+                                        if not available:
+                                            break   # Если есть недоступное устройство
+                                    else:
+                                        continue    # Если все устройства доступны, то пробуем закрыть порт еще раз
+                                break       # Выход из цикла
 
-                                        print("Ожидаем 2мин (не прерывать!)")
-                                        time_sleep(120)      # Ожидаем 2 мин на перестройку кольца
-                                        new_ping_status = ping_from_device(current_ring_list[0], current_ring)
-                                        for _, available in new_ping_status:
-                                            if not available:
+                            # ------------------------Неудача
+                            if operation_port_down2 == 'telnet недоступен':
+                                info = f'В попытке определить был ли это обрыв кабеля, либо временное отключение ' \
+                                       f'электроэнергии не удалось подключиться по telnet к {admin_down["device"]}!'
+
+                            elif operation_port_down2 == 'неверный логин или пароль':
+                                info = f'В попытке определить был ли это обрыв кабеля, либо временное отключение ' \
+                                       f'электроэнергии произошла ошибка "неверный логин или пароль" на ' \
+                                       f'{admin_down["device"]} ({current_ring[admin_down["device"]]["ip"]})\n' \
+                                       f'Просьба разобраться, так как пару минут назад был ' \
+                                       f'выполнен вход на это оборудование под тем же логином и паролем'
+
+                            elif operation_port_down2 == 'cant set down':
+                                info = f'В попытке определить был ли это обрыв кабеля, либо временное отключение ' \
+                                       f'электроэнергии не удалось развернуть кольцо обратно: \n' \
+                                       f'порт {admin_down["interface"][0]} ({current_ring[admin_down["device"]]["ip"]}) ' \
+                                       f'на оборудовании {admin_down["device"]}' \
+                                       f'не был установлен в состояние admin down!'
+
+                            elif 'Exception' in operation_port_down2 and 'SAVE' not in operation_port_down2:
+                                info = f'В попытке определить был ли это обрыв кабеля, либо временное отключение ' \
+                                       f'электроэнергии не удалось развернуть кольцо обратно: \n' \
+                                       f'возникло прерывание при работе с оборудованием {admin_down["device"]} ' \
+                                       f'({current_ring[admin_down["device"]]["ip"]})' \
+                                       f'во время закрытия порта {admin_down["interface"][0]}'
+
+                            # ------------------------Порт закрыт либо не сохранена конфигурация
+                            elif operation_port_down2 == 'DONE' or 'DONT SAVE' in operation_port_down2:
+
+                                # --- Если порт закрыт
+                                if operation_port_down2 == 'DONE':
+                                    # --------------------Открываем порт на преемнике
+                                    print(f'Поднимаем порт {successor_intf} на {successor_name}')
+                                    operation_port_up2 = set_port_status(current_ring=current_ring,
+                                                                         device=successor_name,
+                                                                         interface=successor_intf,
+                                                                         status="up")
+
+                                    #----------------------Порт открыт
+                                    if operation_port_up2 == 'DONE':
+                                        wait_step = 2
+                                        all_avaliable = 0
+                                        while wait_step > 0:
+                                            # Ждем 50 секунд
+                                            print('Ожидаем 50 сек, не прерывать\n'
+                                                  '0                       25                       50с')
+                                            time_sleep(50)
+                                            # Пингуем заново все устройства в кольце с агрегации
+                                            new_ping_status = ping_from_device(current_ring_list[0], current_ring)
+                                            for _, available in new_ping_status:
+                                                if not available:
+                                                    break  # Если есть недоступное устройство
+                                            else:
+                                                print("Все устройства в кольце после разворота доступны!\n")
+                                                all_avaliable = 1  # Если после разворота все устройства доступны
+                                            # Если по истечении 50с остались недоступные устройства, то ждем еще 50с
+                                            if all_avaliable or wait_step == 1:
                                                 break
-                                        else:
+                                            wait_step -= 1
+
+                                        if all_avaliable:
                                             # Если все узлы доступны, то исключаем обрыв кабеля и оставляем кольцо в
                                             #   исходном состоянии. Разворот не требуется!
                                             delete_ring_from_deploying_list(current_ring_name)
                                             print(f"Все узлы в кольце доступны, разворот не потребовался!\n"
                                                   f"Узел {admin_down['device']}, состояние порта {admin_down['interface'][0]}: "
                                                   f"admin down в сторону узла {admin_down['next_device'][0]}")
+                                            email.send_text(subject=f'{current_ring_name} Автоматический разворот '
+                                                                    f'кольца FTTB',
+                                                            text=f"Все узлы в кольце доступны, разворот не потребовался!\n"
+                                                                 f"Узел {admin_down['device']}, состояние порта "
+                                                                 f"{admin_down['interface'][0]}: admin down в сторону "
+                                                                 f"узла {admin_down['next_device'][0]}")
+                                            delete_ring_from_deploying_list(current_ring_name)
                                             sys.exit()
+                                            # Выход
 
-                                        # Если есть недоступные узлы, то необходимо выполнить проверку кольца заново
-                                        main(new_ping_status, current_ring, current_ring_list, current_ring_name,
-                                             this_is_the_second_loop=True)
+                                        elif not all_avaliable:
+                                            # Если есть недоступные узлы, то необходимо выполнить проверку кольца заново
+                                            main(new_ping_status, current_ring, current_ring_list, current_ring_name,
+                                                 this_is_the_second_loop=True)
+                                            sys.exit()
+                                            # Выход
 
-                                    else:
-                                        # В случае, когда мы положили порт в "admin down" на одном узле сети
-                                        #   и не смогли открыть на другом, то необходимо поднять его обратно
-                                        if not set_port_status(current_ring, admin_down['device'],
-                                                               admin_down['interface'][0], "up"):
-                                            # Если порт не поднялся, то информируем об ошибке
-                                            pass
-                                        else:
-                                            # Подняли порт и оставляем кольцо в развернутом виде
-                                            pass
-                                else:
-                                    # В случае, когда не удалось закрыть порт, оставляем кольцо развернутым
-                                    pass
+                                # ---------------------порт открыт, но конфигурация не сохранена
+                                #----------------------Порт не открыт
+                                print(f'Возвращаем закрытый раннее порт {admin_down["interface"][0]} на '
+                                      f'{admin_down["device"]} в прежнее состояние (up)')
+                                # Поднимаем закрытый раннее порт
+                                operation_port_reset2 = set_port_status(current_ring=current_ring,
+                                                                        device=admin_down['device'],
+                                                                        interface=admin_down['interface'][0],
+                                                                        status="up")
 
+                                if operation_port_reset2 == 'DONE' and operation_port_down2 == 'DONE':
+                                    new_ping_status = ping_from_device(current_ring_list[0], current_ring)
+                                    info = f'После разворота стали доступны все устройства и чтобы определить, ' \
+                                           f'либо это скачек электроэнергии, либо обрыв, была предпринята попытка ' \
+                                           f'развернуть кольцо обратно. Для этого на узле сети {admin_down["device"]}' \
+                                           f' был положен порт {admin_down["interface"][0]}, а затем возникла ошибка ' \
+                                           f'при поднятии порта {successor_intf} у оборудования {successor_name}\n' \
+                                           f' {operation_port_up2}\nЗатем вернули порт {admin_down["interface"][0]} ' \
+                                           f'узла {admin_down["device"]} в состояние up.'
+
+                                if operation_port_reset2 == 'DONE' and 'DONT SAVE' in operation_port_down2:
+                                    new_ping_status = ping_from_device(current_ring_list[0], current_ring)
+                                    info = f'После разворота стали доступны все устройства и чтобы определить, ' \
+                                           f'либо это скачек электроэнергии, либо обрыв, была предпринята попытка ' \
+                                           f'развернуть кольцо обратно. Для этого на узле сети {admin_down["device"]}' \
+                                           f' был положен порт {admin_down["interface"][0]}, а затем возникла ошибка ' \
+                                           f'в сохранении конфигурации: {operation_port_down2}\n' \
+                                           f' Затем вернули порт {admin_down["interface"][0]} ' \
+                                           f'узла {admin_down["device"]} в состояние up.'
+
+                                if operation_port_reset2 != 'DONE' and operation_port_down2 == 'DONE':
+                                    new_ping_status = ping_from_device(current_ring_list[0], current_ring)
+                                    info = f'После разворота стали доступны все устройства и чтобы определить, ' \
+                                           f'либо это скачек электроэнергии, либо обрыв, была предпринята попытка ' \
+                                           f'развернуть кольцо обратно. Для этого на узле сети {admin_down["device"]}' \
+                                           f' был положен порт {admin_down["interface"][0]}, а затем возникла ошибка ' \
+                                           f'при поднятии порта {successor_intf} у оборудования {successor_name}\n' \
+                                           f' {operation_port_up2}\nЗатем возникла ошибка во время поднятия порта ' \
+                                           f'{admin_down["interface"][0]} на оборудовании {admin_down["device"]}\n' \
+                                           f'{operation_port_reset2}'
+
+                                if operation_port_reset2 != 'DONE' and operation_port_down2 != 'DONE':
+                                    new_ping_status = ping_from_device(current_ring_list[0], current_ring)
+                                    info = f'После разворота стали доступны все устройства и чтобы определить, ' \
+                                           f'либо это скачек электроэнергии, либо обрыв, была предпринята попытка ' \
+                                           f'развернуть кольцо обратно. Для этого на узле сети {admin_down["device"]}' \
+                                           f' был положен порт {admin_down["interface"][0]}, но возникла ошибка ' \
+                                           f'в сохранении конфигурации: {operation_port_down2}\nЗатем ' \
+                                           f'возникла ошибка во время поднятия порта ' \
+                                           f'{admin_down["interface"][0]} на оборудовании {admin_down["device"]}\n' \
+                                           f'{operation_port_reset2}'
+
+                            # Cохраняем статус разворота
                             with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
                                 ring_to_save = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
                             ring_to_save[current_ring_name] = {"default_host": admin_down['device'],
@@ -569,21 +871,29 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                                                "priority": 1}
                             with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
                                 yaml.dump(ring_to_save, save_ring, default_flow_style=False)
-
                             # Отправка e-mail
                             if email_notification == 'enable':
-                                email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
-                                           successor_name, successor_intf, successor_to,
-                                           admin_down['device'], admin_down['interface'][0], admin_down['next_device'][0])
+                                email.send(ring_name=current_ring_name,
+                                           current_ring_list=current_ring_list,
+                                           old_devices_ping=devices_ping,
+                                           new_devices_ping=new_ping_status,
+                                           admin_down_host=successor_name,
+                                           admin_down_port=successor_intf,
+                                           admin_down_to=successor_to,
+                                           up_host=admin_down['device'],
+                                           up_port=admin_down['interface'][0],
+                                           up_to=admin_down['next_device'][0],
+                                           info=info)
                                 print("Отправлено письмо!")
-                        else:
-                            print(f"{admin_down['device']} Не удалось поднять порт {admin_down['interface'][0]}")
-                            # Восстанавливаем состояние порта на преемнике
-                            set_port_status(current_ring, successor_name, successor_intf, "up")
-                            delete_ring_from_deploying_list(current_ring_name)
+                            sys.exit()
+
                     else:
-                        print(f"{successor_name} Не удалось положить порт {successor_intf}")
-                        delete_ring_from_deploying_list(current_ring_name)
+                        email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                        text=f'Возникло что-то невозможное во время работы с оборудованием '
+                                             f'{successor_name}! ({current_ring[successor_name]["ip"]}) 😵')
+                    delete_ring_from_deploying_list(current_ring_name)
+                    # Выход
+
                 else:
                     print("Все узлы недоступны!")
                     delete_ring_from_deploying_list(current_ring_name)
@@ -640,8 +950,9 @@ def time_sleep(sec: int) -> None:
     :return: None
     '''
     for s in range(sec):
-        print('.', end='', flush=True)
+        print('|', end='', flush=True)
         time.sleep(1)
+    print('\n')
 
 
 def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool = True):
@@ -770,6 +1081,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                     telnet.sendline('disable clipaging')
                     telnet.expect('#')
                     telnet.sendline("show ports des")
+                    print('sh ports des')
                     telnet.expect('#')
                     output = telnet.before.decode('utf-8')
                     telnet.sendline('logout')
@@ -935,14 +1247,19 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
     :param device:          Имя узла сети, с которым необходимо взаимодействовать
     :param interface:       Интерфейс узла сети
     :param status:          "up": поднять порт, "down": положить порт
-    :return:                В случае успеха возвращает 1, неудачи - 0
+    :return:                Статус выполнения или ошибки
     '''
     print("---- def set_port_status ----")
+
+    try_to_save = 3     # 3 попытки сохранить
+    try_to_down = 3     # 3 попытки закрыть порт
+    try_to_up = 3       # 3 попытки открыть порт
+
     with pexpect.spawn(f"telnet {current_ring[device]['ip']}") as telnet:
         try:
             if telnet.expect(["[Uu]ser", 'Unable to connect']):
                 print("    Telnet недоступен!")
-                return False
+                return 'telnet недоступен'
             telnet.sendline(current_ring[device]["user"])
             print(f"    Login to {device}")
             telnet.expect("[Pp]ass")
@@ -951,214 +1268,616 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
             match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
             if match == 3:
                 print('    Неверный логин или пароль!')
-                return False
-            else:
-                telnet.sendline('show version')
-                version = ''
-                while True:
-                    m = telnet.expect([']', '-More-', '>', '#'])
-                    version += str(telnet.before.decode('utf-8'))
-                    if m == 1:
-                        telnet.sendline(' ')
-                    else:
-                        break
+                return 'неверный логин или пароль'
 
-                # ZTE
-                if bool(findall(r' ZTE Corporation:', version)):
-                    print("    ZTE")
-
-                # Huawei
-                elif bool(findall(r'Error: Unrecognized command', version)):
-                    if match == 1:
-                        telnet.sendline("sys")
-                        if telnet.expect([']', 'Unrecognized command']):
-                            telnet.sendline('super')
-                            telnet.expect(':')
-                            telnet.sendline('sevaccess')
-                            telnet.expect('>')
-                            telnet.sendline('sys')
-                            telnet.expect(']')
-                        print(f'    <{device}>system-view')
-                    interface = interface_normal_view(interface)
-                    telnet.sendline(f"interface {interface}")
-                    print(f"    [{device}]interface {interface}")
-                    telnet.expect(f']')
-                    if status == 'down':
-                        telnet.sendline('sh')
-                        print(f'    [{device}-{interface}]shutdown')
-                    elif status == 'up':
-                        telnet.sendline('undo sh')
-                        print(f'    [{device}-{interface}]undo shutdown')
-                    try:
-                        telnet.expect(f']')
-                        telnet.sendline('quit')
-                        telnet.expect(']')
-                        telnet.sendline('quit')
-                        telnet.expect('>')
-                        telnet.sendline('save')
-                        print(f'    <{device}>save')
-                        telnet.expect('[Y/N]')
-                        telnet.sendline('Y')
-                        telnet.sendline('\n')
-                        if not telnet.expect([' successfully', '>']):
-                            print('    configuration saved!')
-                        telnet.sendline('quit')
-                        print('    QUIT\n')
-                    except Exception as e:
-                        print(f"    Don't saved! \nError: {e}")
-                    return 1
-
-                # Cisco
-                elif bool(findall(r'Cisco IOS', version)):
-                    if match == 1:
-                        telnet.sendline("enable")
-                        print(f'    <{device}>enable')
-                        telnet.expect('[Pp]assword')
-                        telnet.sendline('sevaccess')
-                        telnet.expect('#')
-                    telnet.sendline('conf t')
-                    telnet.expect('#')
-                    interface = interface_normal_view(interface)
-                    telnet.sendline(f"interface {interface}")
-                    telnet.expect('#')
-                    print(f"    {device}(config)#interface {interface}")
-                    if status == 'down':
-                        telnet.sendline('sh')
-                        print(f'    {device}(config-if)#shutdown')
-                    elif status == 'up':
-                        telnet.sendline('no sh')
-                        print(f'    {device}(config-if)#no shutdown')
-                    try:
-                        telnet.expect(f'#')
-                        telnet.sendline('exit')
-                        telnet.expect('#')
-                        telnet.sendline('exit')
-                        telnet.expect('#')
-                        telnet.sendline('write')
-                        if telnet.expect(['[OoKk]', '#']) == 0:
-                            print("    Saved!")
-                        else:
-                            print("    Don't saved!")
-                        telnet.sendline('exit')
-                        print('    QUIT\n')
-                    except Exception as e:
-                        print(f"    Don't saved! \nError: {e}")
-                    return 1
-
-                # D-Link
-                elif bool(findall(r'Next possible completions:', version)):
-                    telnet.sendline('enable admin')
-                    telnet.expect("[Pp]ass")
-                    telnet.sendline('sevaccess')
-                    telnet.expect('#')
-                    interface = interface_normal_view(interface)
-                    if status == 'down':
-                        telnet.sendline(f'config ports {interface} medium_type fiber state disable')
-                        print(f'    {device}config ports {interface} medium_type fiber state disable')
-                        telnet.sendline(f'config ports {interface} medium_type copper state disable')
-                        print(f'    {device}config ports {interface} medium_type copper state disable')
-                    elif status == 'up':
-                        telnet.sendline(f'config ports {interface} medium_type fiber state enable')
-                        print(f'    {device}config ports {interface} medium_type fiber state enable')
-                        telnet.sendline(f'config ports {interface} medium_type copper state enable')
-                        print(f'    {device}config ports {interface} medium_type copper state enable')
-                    try:
-                        telnet.expect('#')
-                        telnet.sendline('save')
-                        if telnet.expect(['Success', '#']):
-                            print("    Don't saved!")
-                        else:
-                            print("    Saved!")
-                        telnet.sendline('logout')
-                        print('    QUIT\n')
-                    except Exception as e:
-                        print(f"    Don't saved! \nError: {e}")
-                    return 1
-
-                # Alcatel, Linksys
-                elif bool(findall(r'SW version', version)):
-                    telnet.sendline('conf t')
-                    if telnet.expect(['Wrong number of parameters','#']) == 0:
-                        telnet.sendline('conf')
-                        telnet.expect('#')
-                    telnet.sendline(f'interface ethernet {interface}')
-                    if status == 'down':
-                        telnet.sendline('sh')
-                        print(f'    {device}(config-if)#shutdown')
-                    elif status == 'up':
-                        telnet.sendline('no sh')
-                        print(f'    {device}(config-if)#no shutdown')
-                    try:
-                        telnet.expect(f'#')
-                        telnet.sendline('exit')
-                        telnet.expect('#')
-                        telnet.sendline('exit')
-                        telnet.expect('#')
-                        telnet.sendline('write')
-                        m = telnet.expect(['Unrecognized command', 'succeeded', '#'])
-                        if m == 0:
-                            telnet.sendline('copy running-config startup-config')
-                            telnet.expect('[Yes/press any key for no]')
-                            telnet.sendline('Yes')
-                            m = telnet.expect(['!@#', 'succeeded', '#'])
-                        if m == 1:
-                            print("    Saved!")
-                        else:
-                            print("    Don't saved!")
-                        telnet.sendline('exit')
-                        print('    QUIT\n')
-                    except Exception as e:
-                        print(f"    Don't saved! \nError: {e}")
-                    return 1
-
-                # Edge-Core
-                elif bool(findall(r'Hardware version', version)):
-                    print("    Edge-Core")
-
-                # Zyxel
-                elif bool(findall(r'ZyNOS', version)):
-                    print("    Zyxel")
-
-                # Eltex
-                elif bool(findall(r'Active-image: ', version)):
-                    telnet.sendline('conf t')
-                    telnet.expect('#')
-                    interface = interface_normal_view(interface)
-                    telnet.sendline(f"interface {interface}")
-                    telnet.expect('#')
-                    print(f"    {device}(config)#interface {interface}")
-                    if status == 'down':
-                        telnet.sendline('sh')
-                        print(f'    {device}(config-if)#shutdown')
-                    elif status == 'up':
-                        telnet.sendline('no sh')
-                        print(f'    {device}(config-if)#no shutdown')
-                    try:
-                        telnet.expect(f'#')
-                        telnet.sendline('exit')
-                        telnet.expect('#')
-                        telnet.sendline('exit')
-                        telnet.expect('#')
-                        telnet.sendline('write')
-                        telnet.expect('(Y/N)')
-                        telnet.sendline('Y')
-                        if telnet.expect(['succeeded', '#']) == 0:
-                            print("    Saved!")
-                        else:
-                            print("    Don't saved!")
-                        telnet.sendline('exit')
-                        print('    QUIT\n')
-                    except Exception as e:
-                        print(f"    Don't saved! \nError: {e}")
-                    return 1
-
-                # Если не был определен вендор, то возвращаем False
-                telnet.sendline('exit')
-                return False
-
+            telnet.sendline('show version')
+            version = ''
+            while True:
+                m = telnet.expect([r']$', '-More-', r'>$', r'#'])
+                version += str(telnet.before.decode('utf-8'))
+                if m == 1:
+                    telnet.sendline(' ')
+                else:
+                    break
         except pexpect.exceptions.TIMEOUT:
             print("    Время ожидания превышено! (timeout)")
-            return False
+            return 'Exception: TIMEOUT'
+        except pexpect.exceptions.EOF:
+            print("    Exception: EOF")
+            return 'Exception: EOF'
+
+        # -----------------------------------------HUAWEI--------------------------------------------------------------
+        if bool(findall(r'Unrecognized command', version)):
+            try:
+                if match == 1:
+                    telnet.sendline("sys")
+                    if telnet.expect([']', 'Unrecognized command']):
+                        telnet.sendline('super')
+                        print(f'    <{device}>super')
+                        telnet.expect('[Pp]ass')
+                        telnet.sendline('sevaccess')
+                        telnet.expect('>')
+                        telnet.sendline('sys')
+                        telnet.expect(']')
+                    print(f'    <{device}>system-view')
+                interface = interface_normal_view(interface)
+                telnet.sendline(f"int {interface}")
+                print(f"    [{device}]interface {interface}")
+                telnet.expect(f']')
+                # -------------------Huawei - ADMIN DOWN-------------------
+                if status == 'down':
+                    # 3 попытки положить интерфейс
+                    while try_to_down > 0:
+                        telnet.sendline('sh')
+                        print(f'    [{device}-{interface}]shutdown')
+                        telnet.expect(']')
+                        # проверяем статуст порта
+                        telnet.sendline(f'display current-configuration interface {interface}')
+                        print('    Проверяем статус порта')
+                        output = ''
+                        while True:
+                            match = telnet.expect([']', "  ---- More ----", pexpect.TIMEOUT])
+                            output += str(telnet.before.decode('utf-8')).replace("[42D", '').strip()
+                            if match == 1:
+                                telnet.send(" ")
+                                output += '\n'
+                            else:
+                                break
+                        print(f'\n----{output}\n----')
+                        if 'interface' in output and 'shutdown' in output:
+                            print(f'    Порт {interface} admin down!')
+                            break
+                        elif 'interface' not in output:
+                            print('    Не удалось определить статус порта')
+                            telnet.sendline('sh')
+                            telnet.expect(']')
+                            telnet.sendline('quit')
+                            telnet.expect(']')
+                            telnet.sendline('quit')
+                            telnet.expect(']')
+                            telnet.sendline('quit')
+                            print('    QUIT!')
+                            return 'cant status'
+                        try_to_down -= 1
+                        print(f'    Порт не удалось закрыть порт, пытаемся заново (осталось {try_to_down} попыток)')
+                    else:
+                        print(f'    Порт не закрыт! Не удалось установить порт в состояние admin down')
+                        return 'cant set down'
+
+                # --------------------Huawei - ADMIN UP---------------------
+                elif status == 'up':
+                    # 3 попытки поднять интерфейс
+                    while try_to_up > 0:
+                        telnet.sendline('undo sh')
+                        print(f'    [{device}-{interface}]undo shutdown')
+                        telnet.expect(']')
+                        # проверяем статуст порта
+                        telnet.sendline(f'display current-configuration int {interface}')
+                        print('    Проверяем статус порта')
+                        output = ''
+                        while True:
+                            match = telnet.expect([']', "  ---- More ----", pexpect.TIMEOUT])
+                            output += str(telnet.before.decode('utf-8')).replace("[42D", '').strip()
+                            if match == 1:
+                                telnet.send(" ")
+                                output += '\n'
+                            else:
+                                break
+                        print(output)
+                        if 'interface' in output and 'shutdown' not in output:    # не в down
+                            print(f'    Порт {interface} admin up!')
+                            break
+                        elif 'interface' not in output:
+                            print('    Не удалось определить статус порта')
+                            telnet.sendline('sh')
+                            telnet.expect(']')
+                            telnet.sendline('quit')
+                            telnet.expect(']')
+                            telnet.sendline('quit')
+                            telnet.expect(']')
+                            telnet.sendline('quit')
+                            print('    QUIT!')
+                            return 'cant status'
+                        try_to_up -= 1
+                        print(f'    Порт не удалось открыть порт, пытаемся заново (осталось {try_to_up} попыток)')
+                    else:
+                        print(f'    Порт не открыт! Не удалось установить порт в состояние admin up')
+                        return 'cant set up'
+            except Exception as e:
+                print(f"    Exeption: {e}")
+                return 'Exception: cant set port status'
+            # ----------------------Huawei - SAVE------------------------
+            try:
+                telnet.sendline('quit')
+                telnet.expect(']')
+                telnet.sendline('quit')
+                telnet.expect('>')
+                # 3 попытки сохранить
+                while try_to_save > 0:
+                    telnet.sendline('save')
+                    print(f'    <{device}>save')
+                    telnet.expect('[Y/N]')
+                    telnet.sendline('Y')
+                    telnet.sendline('\n')
+                    if not telnet.expect([' successfully', '>']):
+                        print('    configuration saved!')
+                        telnet.sendline('quit')
+                        print('    QUIT\n')
+                        return 'DONE'
+                    else:
+                        print(f'    Не удалось сохранить! пробуем заново (осталось {try_to_save} попыток')
+                    try_to_save -= 1
+
+                telnet.sendline('quit')
+                print('    QUIT\n')
+                return 'DONT SAVE'
+            except Exception as e:
+                print(f"    Exception: Don't saved! \nError: {e}")
+                return 'Exception: DONT SAVE'
+
+        # --------------------------------------CISCO - ELTEX----------------------------------------------------------
+        elif bool(findall(r'Cisco IOS', version)) or bool(findall(r'Active-image: ', version)):
+            try:
+                if match == 1:
+                    telnet.sendline("enable")
+                    print(f'    {device}>enable')
+                    telnet.expect('[Pp]assword')
+                    telnet.sendline('sevaccess')
+                    telnet.expect('#$')
+                telnet.sendline('conf t')
+                telnet.expect('#$')
+                interface = interface_normal_view(interface)
+                telnet.sendline(f"int {interface}")
+                print(f"    {device}(config)#interface {interface}")
+                telnet.expect('#$')
+                # -------------------Cisco, Eltex - ADMIN DOWN--------------------------
+                if status == 'down':
+                    # 3 попытки положить интерфейс
+                    while try_to_down > 0:
+                        telnet.sendline('shutdown')   # закрываем порт
+                        print(f'    {device}(config-if)#shutdown')
+                        telnet.expect('#$')
+                        # проверяем статуст порта
+                        telnet.sendline(f'do show running-config int {interface}')
+                        print('    Проверяем статус порта')
+                        if try_to_down == 3 and bool(findall(r'Cisco IOS', version)):
+                            telnet.expect('#$')
+                        output = ''
+                        while True:
+                            match = telnet.expect(['#$', "--More--|More: <space>", pexpect.TIMEOUT])
+                            output += str(telnet.before.decode('utf-8')).strip()
+                            if match == 1:
+                                telnet.send(" ")
+                                output += '\n'
+                            else:
+                                break
+                        #print(f'\n----{output}\n----')
+                        if 'interface' in output and 'shutdown' in output:
+                            print(f'    Порт {interface} admin down!')
+                            break
+                        elif 'interface' not in output:
+                            print('    Не удалось определить статус порта')
+                            telnet.sendline('no shutdown')
+                            print(f'    {device}(config-if)#no shutdown')
+                            telnet.expect('#$')
+                            telnet.sendline('exit')
+                            telnet.expect('#$')
+                            telnet.sendline('exit')
+                            telnet.expect('#$')
+                            telnet.sendline('exit')
+                            print('    EXIT')
+                            return 'cant status'
+                        try_to_down -= 1
+                        print(f'    Порт не удалось закрыть порт, пытаемся заново (осталось {try_to_down} попыток)')
+                    else:
+                        print(f'    Порт не закрыт! Не удалось установить порт в состояние admin down')
+                        telnet.sendline('exit')
+                        telnet.expect('#$')
+                        telnet.sendline('exit')
+                        telnet.expect('#$')
+                        telnet.sendline('exit')
+                        print('    EXIT')
+                        return 'cant set down'
+
+                # ---------------------Cisco, Eltex - ADMIN UP----------------------------
+                elif status == 'up':
+                    # 3 попытки поднять интерфейс
+                    while try_to_up > 0:
+                        telnet.sendline('no shutdown')    # открываем порт
+                        print(f'    {device}(config-if)#no shutdown')
+                        telnet.expect('#$')
+                        # проверяем статуст порта
+                        telnet.sendline(f'do show running-config int {interface}')
+                        print('    Проверяем статус порта')
+                        if try_to_up == 3 and bool(findall(r'Cisco IOS', version)):
+                            telnet.expect('#$')
+                        output = ''
+                        while True:
+                            match = telnet.expect(['#$', "--More--|More: <space>", pexpect.TIMEOUT])
+                            output += str(telnet.before.decode('utf-8')).strip()
+                            if match == 1:
+                                telnet.send(" ")
+                                output += '\n'
+                            else:
+                                break
+                        #print(f'\n----{output}\n----')
+                        if 'interface' in output and 'shutdown' not in output:
+                            print(f'    Порт {interface} admin up!')
+                            break
+                        elif 'interface' not in output:
+                            print('    Не удалось определить статус порта\n')
+                            telnet.sendline('shutdown')
+                            print(f'    {device}(config-if)#shutdown')
+                            telnet.expect('#$')
+                            telnet.sendline('exit')
+                            telnet.expect('#$')
+                            telnet.sendline('exit')
+                            telnet.expect('#$')
+                            telnet.sendline('exit')
+                            print('    EXIT')
+                            return 'cant status'
+                        try_to_up -= 1
+                        print(f'    Порт не удалось открыть порт, пытаемся заново (осталось {try_to_up} попыток)')
+                    else:
+                        print(f'    Порт не закрыт! Не удалось установить порт в состояние admin down')
+                        telnet.sendline('exit')
+                        telnet.expect('#$')
+                        telnet.sendline('exit')
+                        telnet.expect('#$')
+                        telnet.sendline('exit')
+                        print('    EXIT')
+                        return 'cant set down'
+            except Exception as e:
+                print(f"    Exeption: {e}")
+                return 'Exception: cant set port status'
+            # ---------------------------Cisco, Eltex - SAVE------------------------------
+            try:
+                # telnet.expect('#')
+                telnet.sendline('exit')
+                print(f"    {device}(config-if)#exit")
+                telnet.expect('#$')
+                telnet.sendline('exit')
+                print(f"    {device}(config)#exit")
+                telnet.expect('#$')
+                # 3 попытки сохранить
+                # Если Cisco
+                if bool(findall(r'Cisco IOS', version)):
+                    while try_to_save > 0:
+                        telnet.sendline('write')
+                        print(f"    {device}#write")
+                        telnet.expect('Building configuration')
+                        if telnet.expect(['OK', '#$']) == 0:
+                            print("    Saved!")
+                            telnet.sendline('exit')
+                            print('    QUIT\n')
+                            return 'DONE'
+                        else:
+                            try_to_save -= 1
+                            print(f'    Не удалось сохранить! пробуем заново (осталось {try_to_save} попыток)')
+                    telnet.sendline('exit')
+                    print('    QUIT\n')
+                    return 'DONT SAVE'
+                # Если Eltex
+                if bool(findall(r'Active-image: ', version)):
+                    while try_to_save > 0:
+                        telnet.sendline('write')
+                        print(f"    {device}#write")
+                        telnet.expect('Overwrite file')
+                        telnet.sendline('Y')
+                        telnet.expect('Y')
+                        if telnet.expect(['succeeded', '#$']) == 0:
+                            print("    Saved!")
+                            telnet.sendline('exit')
+                            print('    QUIT\n')
+                            return 'DONE'
+                        else:
+                            try_to_save -= 1
+                            print(f'    Не удалось сохранить! пробуем заново (осталось {try_to_save} попыток)')
+                    telnet.sendline('exit')
+                    print('    QUIT\n')
+                    return 'DONT SAVE'
+            except Exception as e:
+                print(f"    Exception: Don't saved! \nError: {e}")
+                return 'Exception: DONT SAVE'
+
+        # ------------------------------------------D-LINK-------------------------------------------------------------
+        elif bool(findall(r'Next possible completions:', version)):
+            try:
+                telnet.sendline('enable admin')
+                if not telnet.expect(["[Pp]ass", "You already have the admin"]):
+                    telnet.sendline('sevaccess')
+                    telnet.expect('#')
+                interface = interface_normal_view(interface)
+                # -------------------------D-Link - ADMIN DOWN----------------------------
+                if status == 'down':
+                    # 3 попытки закрыть порт
+                    while try_to_down > 0:
+                        telnet.sendline(f'config ports {interface} medium_type fiber state disable')
+                        print(f'    {device}#config ports {interface} medium_type fiber state disable')
+                        telnet.sendline(f'config ports {interface} medium_type copper state disable')
+                        print(f'    {device}#config ports {interface} medium_type copper state disable')
+                        telnet.expect('#')
+                        telnet.sendline('disable clipaging')
+                        telnet.expect('#')
+                        telnet.sendline("show ports des")
+                        print('    Проверяем статус порта')
+                        print(f'    {device}#show ports description')
+                        telnet.expect('#')
+                        telnet.sendline('\n')
+                        telnet.expect('#')
+                        output = telnet.before.decode('utf-8')
+                        with open(f'{root_dir}/templates/int_des_d-link.template', 'r') as template_file:
+                            int_des_ = textfsm.TextFSM(template_file)
+                            result = int_des_.ParseText(output)  # интерфейсы
+                        # Если не нашли интерфейсы или не нашли у необходимого интерфейса статуса, либо его самого
+                        if not result or not [x[1] for x in result if interface_normal_view(x[0]) == interface]:
+                            print('    Не удалось определить статус порта')
+                            # возвращаем порт в прежнее состояние
+                            telnet.sendline(f'config ports {interface} medium_type fiber state enable')
+                            print(f'    {device}#config ports {interface} medium_type fiber state enable')
+                            telnet.sendline(f'config ports {interface} medium_type copper state enable')
+                            print(f'    {device}#config ports {interface} medium_type copper state enable')
+                            telnet.expect('#')
+                            telnet.sendline('logout')
+                            print('    LOGOUT!')
+                            return 'cant status'
+                        # Проходимся по всем интерфейсам
+                        for line in result:
+                            # Если нашли требуемый порт и он Disabled (admin down)
+                            if interface_normal_view(line[0]) == interface and line[1] == 'Disabled':
+                                print(f'    Порт {interface} admin down!')
+                                break
+                        # Если требуемый порт НЕ Enabled
+                        else:
+                            try_to_down -= 1
+                            print(f'    Порт не удалось закрыть, пытаемся заново (осталось {try_to_down} попыток)')
+                            continue
+
+                        break  # Если нашли требуемый порт и он Enabled
+                    else:
+                        print(f'    Порт не закрыт! Не удалось установить порт в состояние admin down')
+                        telnet.sendline('logout')
+                        print('    LOGOUT!')
+                        return 'cant set down'
+                # -------------------------D-Link - ADMIN UP------------------------------
+                elif status == 'up':
+                    # 3 попытки открыть порт
+                    while try_to_up > 0:
+                        telnet.sendline(f'config ports {interface} medium_type fiber state enable')
+                        print(f'    {device}#config ports {interface} medium_type fiber state enable')
+                        telnet.sendline(f'config ports {interface} medium_type copper state enable')
+                        print(f'    {device}#config ports {interface} medium_type copper state enable')
+                        telnet.expect('#')
+                        telnet.sendline('disable clipaging')
+                        telnet.expect('#')
+                        print('    Проверяем статус порта')
+                        telnet.sendline("show ports des")
+                        print(f'    {device}#show ports description')
+                        telnet.expect('#')
+                        telnet.sendline('\n')
+                        telnet.expect('#')
+                        output = telnet.before.decode('utf-8')
+                        with open(f'{root_dir}/templates/int_des_d-link.template', 'r') as template_file:
+                            int_des_ = textfsm.TextFSM(template_file)
+                            result = int_des_.ParseText(output)     # интерфейсы
+                        # Если не нашли интерфейсы или не нашли у необходимого интерфейса статуса, либо его самого
+                        if not result or not [x[1] for x in result if interface_normal_view(x[0]) == interface]:
+                            print('    Не удалось определить статус порта')
+                            # возвращаем порт в прежнее состояние
+                            telnet.sendline(f'config ports {interface} medium_type fiber state disable')
+                            print(f'    {device}#config ports {interface} medium_type fiber state disable')
+                            telnet.sendline(f'config ports {interface} medium_type copper state disable')
+                            print(f'    {device}#config ports {interface} medium_type copper state disable')
+                            telnet.expect('#$')
+                            telnet.sendline('logout')
+                            print('    LOGOUT!')
+                            return 'cant status'
+                        # Проходимся по всем интерфейсам
+                        for line in result:
+                            # Если нашли требуемый порт и он Enabled (admin up)
+                            if interface_normal_view(line[0]) == interface and line[1] == 'Enabled':
+                                print(f'    Порт {interface} admin up!')
+                                break
+                        # Если требуемый порт НЕ Enabled
+                        else:
+                            try_to_up -= 1
+                            print(f'    Порт не удалось открыть, пытаемся заново (осталось {try_to_up} попыток)')
+                            continue
+
+                        break   # Если нашли требуемый порт и он Enabled
+                    else:
+                        print(f'    Порт не закрыт! Не удалось установить порт в состояние admin up')
+                        telnet.sendline('logout')
+                        print('    LOGOUT!')
+                        return 'cant set up'
+            except Exception as e:
+                print(f"    Exeption: {e}")
+                return 'Exception: cant set port status'
+            # -------------------------D-Link - SAVE----------------------------------
+            try:
+                while try_to_save > 0:
+                    telnet.sendline('save')
+                    print(f'    {device}#save')
+                    telnet.expect('Command: save')
+                    m = telnet.expect(['[Ss]uccess', '#'])
+                    if m == 0:
+                        print("    Saved!")
+                        telnet.sendline('logout')
+                        print('    LOGOUT!\n')
+                        return 'DONE'
+                    else:
+                        try_to_save -= 1
+                        print(f'    Не удалось сохранить! пробуем заново (осталось {try_to_save} попыток)')
+                else:
+                    print("    Don't saved!")
+                    telnet.sendline('logout')
+                    print('    LOGOUT!\n')
+                    return 'DONT SAVE'
+            except Exception as e:
+                print(f"    Don't saved! \nError: {e}")
+                return 'Exception: DONT SAVE'
+
+        # -------------------------------------Alcatel - Linksys-------------------------------------------------------
+        elif bool(findall(r'SW version', version)):
+            try:
+                telnet.sendline('conf')
+                print(f'    {device}# configure')
+                telnet.expect('# ')
+                telnet.sendline(f'interface ethernet {interface}')
+                print(f'    {device}(config)# interface ethernet {interface}')
+                telnet.expect('# ')
+                # ------------------Alcatel, Linksys - ADMIN DOWN---------------------
+                if status == 'down':
+                    while try_to_down > 0:
+                        telnet.sendline('sh')
+                        print(f'    {device}(config-if)# shutdown')
+                        telnet.expect('# ')
+                        telnet.sendline('do show interfaces configuration')
+                        print('    Проверяем статус порта')
+                        telnet.expect('Port')
+                        port_state = ''
+                        while True:
+                            match = telnet.expect(['More: <space>', '# ', pexpect.TIMEOUT])
+                            port_state += str(telnet.before.decode('utf-8')).strip()
+                            if match == 0:
+                                telnet.sendline(' ')
+                            else:
+                                break
+                        with open(f'{root_dir}/templates/int_des_alcatel_linksys.template', 'r') as template_file:
+                            int_des_ = textfsm.TextFSM(template_file)
+                            result = int_des_.ParseText(port_state)  # Ищем интерфейсы
+                        # Если не нашли интерфейсы или не нашли у необходимого интерфейса статуса, либо его самого
+                        if not result or not [x[1] for x in result if x[0] == interface]:
+                            print('    Не удалось определить статус порта')
+                            # возвращаем порт в прежнее состояние
+                            print('    Возвращаем порт в прежнее состояние')
+                            telnet.sendline('no sh')
+                            print(f'    {device}(config-if)# no shutdown')
+                            telnet.sendline('exit')
+                            telnet.sendline('exit')
+                            telnet.sendline('exit')
+                            print('    EXIT!')
+                            return 'cant status'
+                        # Проходимся по всем интерфейсам
+                        for line in result:
+                            # Если нашли требуемый порт и он admin down
+                            if line[0] == interface and line[1] == 'Down':
+                                print(f'    Порт {interface} admin down!')
+                                break
+                        # Если требуемый порт НЕ admin down
+                        else:
+                            try_to_down -= 1
+                            print(f'    Порт не удалось закрыть, пытаемся заново (осталось {try_to_down} попыток)')
+                            continue
+
+                        break  # Если нашли требуемый порт и он admin down
+                    else:
+                        print(f'    Порт не закрыт! Не удалось установить порт в состояние admin down')
+                        telnet.sendline('exit')
+                        telnet.sendline('exit')
+                        telnet.sendline('exit')
+                        print('    EXIT!')
+                        return 'cant set down'
+                # ------------------Alcatel, Linksys - ADMIN UP-----------------------
+                elif status == 'up':
+                    while try_to_up > 0:
+                        telnet.sendline('no sh')
+                        print(f'    {device}(config-if)# no shutdown')
+                        telnet.expect('# ')
+                        telnet.sendline('do show interfaces configuration')
+                        print('    Проверяем статус порта')
+                        telnet.expect('Port')
+                        port_state = ''
+                        while True:
+                            match = telnet.expect(['More: <space>', '# ', pexpect.TIMEOUT])
+                            port_state += str(telnet.before.decode('utf-8')).strip()
+                            if match == 0:
+                                telnet.sendline(' ')
+                            else:
+                                break
+                        with open(f'{root_dir}/templates/int_des_alcatel_linksys.template', 'r') as template_file:
+                            int_des_ = textfsm.TextFSM(template_file)
+                            result = int_des_.ParseText(port_state)  # Ищем интерфейсы
+                        # Если не нашли интерфейсы или не нашли у необходимого интерфейса статуса, либо его самого
+                        if not result or not [x[1] for x in result if x[0] == interface]:
+                            print('    Не удалось определить статус порта')
+                            # возвращаем порт в прежнее состояние
+                            print('    Возвращаем порт в прежнее состояние')
+                            telnet.sendline('sh')
+                            print(f'    {device}(config-if)# shutdown')
+                            telnet.sendline('exit')
+                            telnet.sendline('exit')
+                            telnet.sendline('exit')
+                            print('    EXIT!')
+                            return 'cant status'
+                        # Проходимся по всем интерфейсам
+                        for line in result:
+                            # Если нашли требуемый порт и он admin up
+                            if line[0] == interface and line[1] == 'Up':
+                                print(f'    Порт {interface} admin up!')
+                                break
+                        # Если требуемый порт НЕ admin up
+                        else:
+                            try_to_up -= 1
+                            print(f'    Порт не удалось открыть, пытаемся заново (осталось {try_to_up} попыток)')
+                            continue
+
+                        break  # Если нашли требуемый порт и он admin down
+                    else:
+                        print(f'    Порт не открыт! Не удалось установить порт в состояние admin up')
+                        telnet.sendline('exit')
+                        telnet.sendline('exit')
+                        telnet.sendline('exit')
+                        print('    EXIT!')
+                        return 'cant set up'
+            except Exception as e:
+                print(f"    Exeption: {e}")
+                return 'Exception: cant set port status'
+            # ------------------------Alcatel, Linksys - SAVE-------------------------
+            try:
+                telnet.sendline('exit')
+                telnet.expect('# ')
+                telnet.sendline('exit')
+                telnet.expect('# ')
+                telnet.sendline('write')
+                print(f'    {device}# write')
+                telnet.expect('write')
+                m = telnet.expect(['Unrecognized command', 'succeeded', '# '])
+                if m == 0:
+                    telnet.sendline('copy running-config startup-config')
+                    print(f'    {device}# copy running-config startup-config')
+                    telnet.expect('Overwrite file')
+                    telnet.sendline('Yes')
+                    m = telnet.expect(['!@#', 'succeeded', '# '])
+                if m == 1:
+                    print("    Saved!")
+                    telnet.sendline('exit')
+                    print('    EXIT!\n')
+                    return 'DONE'
+                else:
+                    print('    Dont saved!')
+                    telnet.sendline('exit')
+                    print('    EXIT!\n')
+                    return 'DONT SAVE'
+            except Exception as e:
+                print(f"    Don't saved! \nError: {e}")
+                return 'Exception: DONT SAVE'
+
+        # Edge-Core
+        elif bool(findall(r'Hardware version', version)):
+            print("    Edge-Core")
+
+        # Zyxel
+        elif bool(findall(r'ZyNOS', version)):
+            print("    Zyxel")
+
+        # ZTE
+        elif bool(findall(r' ZTE Corporation:', version)):
+            print("    ZTE")
+
+        # Если не был определен вендор, то возвращаем False
+        telnet.sendline('exit')
+        return False
 
 
 def find_port_by_desc(ring: dict, main_name: str, target_name: str):

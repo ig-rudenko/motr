@@ -55,29 +55,194 @@ if __name__ == '__main__':
             print("Не все узлы сети в кольце восстановлены, дальнейший разворот прерван!")
             break
     else:   # Когда все узлы сети в кольце доступны, то...
-        print("ALL DEVICES AVAILABLE!\n")
-        print(f'Закрываем порт {rotated_rings[current_ring_name]["default_port"]} '
-              f'на {rotated_rings[current_ring_name]["default_host"]}')
-        if motr.set_port_status(current_ring,
-                                rotated_rings[current_ring_name]["default_host"],
-                                rotated_rings[current_ring_name]["default_port"], "down"):
+        print("ALL DEVICES AVAILABLE!\nНачинаем разворот")
 
+        # -----------------------------Закрываем порт на default_host------------------------------------------
+        try_to_set_port = 2
+        while try_to_set_port > 0:
+            print(f'Закрываем порт {rotated_rings[current_ring_name]["default_port"]} '
+                  f'на {rotated_rings[current_ring_name]["default_host"]}')
+            operation_port_down = motr.set_port_status(current_ring=current_ring,
+                                                       device=rotated_rings[current_ring_name]["default_host"],
+                                                       interface=rotated_rings[current_ring_name]["default_port"],
+                                                       status="down")
+            # Если поймали исключение, то пробуем еще один раз
+            if 'Exception' in operation_port_down and 'SAVE' not in operation_port_down:
+                try_to_set_port -= 1
+                if try_to_set_port > 1:
+                    print('\nПробуем еще один раз закрыть порт\n')
+                continue
+            break
+
+        # ---------------------------Если порт на default_host НЕ закрыли--------------------------------------
+        if operation_port_down == 'telnet недоступен':
+            email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                            text=f'Не удалось подключиться к {rotated_rings[current_ring_name]["default_host"]} по telnet!'
+                                 f'({current_ring[rotated_rings[current_ring_name]["default_host"]]["ip"]})')
+
+        elif operation_port_down == 'неверный логин или пароль':
+            email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                            text=f'Не удалось зайти на оборудование {rotated_rings[current_ring_name]["default_host"]} '
+                                 f'({current_ring[rotated_rings[current_ring_name]["default_host"]]["ip"]}) {operation_port_down}')
+
+        elif operation_port_down == 'cant set down':
+            email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                            text=f'На оборудовании {rotated_rings[current_ring_name]["default_host"]} '
+                                 f'({current_ring[rotated_rings[current_ring_name]["default_host"]]["ip"]})'
+                                 f'не удалось закрыть порт {rotated_rings[current_ring_name]["default_port"]}!')
+
+        elif operation_port_down == 'cant status':
+            email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                            text=f'На оборудовании {rotated_rings[current_ring_name]["default_host"]} '
+                                 f'({current_ring[rotated_rings[current_ring_name]["default_host"]]["ip"]})'
+                                 f'была послана команда закрыть порт {rotated_rings[current_ring_name]["default_port"]},'
+                                 f' но не удалось распознать интерфейсы для проверки его состояния(см. логи)\n'
+                                 f'Отправлена команда на возврат порта в прежнее состояние (up)')
+
+        elif 'DONT SAVE' in operation_port_down:
+            # открываем порт
+            try_to_set_port = 2
+            while try_to_set_port > 0:
+                print(f'Открываем порт {rotated_rings[current_ring_name]["default_port"]} на '
+                      f'{rotated_rings[current_ring_name]["default_host"]}')
+                operation_port_up = motr.set_port_status(current_ring=current_ring,
+                                                         device=rotated_rings[current_ring_name]["default_host"],
+                                                         interface=rotated_rings[current_ring_name]["default_port"],
+                                                         status="up")
+                # Если поймали исключение, то пробуем еще один раз
+                if 'Exception' in operation_port_up and 'SAVE' not in operation_port_up:
+                    try_to_set_port -= 1
+                    if try_to_set_port > 1:
+                        print('\nПробуем еще один раз открыть порт\n')
+                    continue
+                break
+            if operation_port_up == 'DONE' or 'DONT SAVE' in operation_port_up:
+                email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                text=f'На оборудовании {rotated_rings[current_ring_name]["default_host"]} '
+                                     f'({current_ring[rotated_rings[current_ring_name]["default_host"]]["ip"]})'
+                                     f'после закрытия порта {rotated_rings[current_ring_name]["default_port"]} не удалось сохранить '
+                                     f'конфигурацию!\nВернул порт в исходное состояние (up)\n'
+                                     f'Разворот кольца прерван')
+            else:
+                email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                text=f'На оборудовании {rotated_rings[current_ring_name]["default_host"]} '
+                                     f'({current_ring[rotated_rings[current_ring_name]["default_host"]]["ip"]})'
+                                     f'после закрытия порта {rotated_rings[current_ring_name]["default_port"]} не удалось сохранить '
+                                     f'конфигурацию!\nПопытка поднять порт обратно закончилась неудачей: '
+                                     f'{operation_port_up}.\n'
+                                     f'Разворот кольца прерван')
+            sys.exit()
+            # Выход
+
+        elif operation_port_down == 'Exception: cant set port status':
+            email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                            text=f'Возникло прерывание в момент закрытия порта {rotated_rings[current_ring_name]["default_port"]} '
+                                 f'на оборудовании {rotated_rings[current_ring_name]["default_host"]} '
+                                 f'({current_ring[rotated_rings[current_ring_name]["default_host"]]["ip"]})')
+
+        elif 'Exception' in operation_port_down:
+            email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                            text=f'Возникло прерывание после подключения к оборудованию '
+                                 f'{rotated_rings[current_ring_name]["default_host"]} '
+                                 f'({current_ring[rotated_rings[current_ring_name]["default_host"]]["ip"]})')
+
+        # ------------------------------------Если порт на default_host закрыли----------------------------------
+        elif operation_port_down == 'DONE':
+
+            # ---------------------Поднимаем порт на admin_down_device--------------------------------------
             print(f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_port"]} '
                   f'на {rotated_rings[current_ring_name]["admin_down_host"]}')
-            if motr.set_port_status(current_ring,
-                                    rotated_rings[current_ring_name]["admin_down_host"],
-                                    rotated_rings[current_ring_name]["admin_down_port"], "up"):
+            operation_port_up = motr.set_port_status(current_ring=current_ring,
+                                                     device=rotated_rings[current_ring_name]["admin_down_host"],
+                                                     interface=rotated_rings[current_ring_name]["admin_down_port"],
+                                                     status="up")
 
-                print(f"Кольцо развернуто!\n"
-                      f"На узле сети {rotated_rings[current_ring_name]['default_host']} порт "
-                      f"{rotated_rings[current_ring_name]['default_port']} в статусе admin down")
-                print("Ожидаем 2мин (не прерывать!)")
-                motr.time_sleep(120)  # Ожидаем 2мин на перестройку кольца
-                new_ping_status = motr.ping_from_device(current_ring_list[0], current_ring)
-                for _, available in new_ping_status:
-                    if not available:
+            # Если проблема возникла до стадии сохранения
+            if 'SAVE' not in operation_port_up and 'DONE' not in operation_port_up:
+                # Восстанавливаем порт на преемнике в исходное состояние (up)
+                print(f'\nВосстанавливаем порт {rotated_rings[current_ring_name]["default_port"]} на '
+                      f'{rotated_rings[current_ring_name]["default_host"]} '
+                      f'в исходное состояние (up)\n')
+                operation_port_reset = motr.set_port_status(current_ring=current_ring,
+                                                            device=rotated_rings[current_ring_name]["default_host"],
+                                                            interface=rotated_rings[current_ring_name]["default_port"],
+                                                            status="up")
+                if operation_port_reset == 'DONE':
+                    email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                    text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
+                                         f'В процессе выполнения был установлен статус порта '
+                                         f'{rotated_rings[current_ring_name]["default_port"]} у '
+                                         f'{rotated_rings[current_ring_name]["default_host"]} "admin down", '
+                                         f'а затем возникла ошибка: {operation_port_up} на узле '
+                                         f'{rotated_rings[current_ring_name]["admin_down_host"]} в попытке поднять порт '
+                                         f'{rotated_rings[current_ring_name]["admin_down_port"]}\n'
+                                         f'Далее порт {rotated_rings[current_ring_name]["default_port"]} '
+                                         f'на {rotated_rings[current_ring_name]["default_host"]} был возвращен в исходное состояние (up)')
+                # Если проблема возникла до стадии сохранения
+                elif 'SAVE' not in operation_port_reset:
+                    email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                    text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
+                                         f'В процессе выполнения был установлен статус порта '
+                                         f'{rotated_rings[current_ring_name]["default_port"]} у '
+                                         f'{rotated_rings[current_ring_name]["default_host"]} "admin down", '
+                                         f'а затем возникла ошибка: {operation_port_up} на узле '
+                                         f'{rotated_rings[current_ring_name]["admin_down_host"]} в попытке поднять порт '
+                                         f'{rotated_rings[current_ring_name]["admin_down_port"]}\nДалее возникла ошибка в процессе '
+                                         f'возврата порта {rotated_rings[current_ring_name]["default_port"]} на '
+                                         f'{rotated_rings[current_ring_name]["default_host"]} в '
+                                         f'исходное состояние (up) \nError: {operation_port_reset}')
+                # Если проблема возникла на стадии сохранения
+                elif 'SAVE' in operation_port_reset:
+                    email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
+                                    text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
+                                         f'В процессе выполнения был установлен статус порта '
+                                         f'{rotated_rings[current_ring_name]["default_port"]} у '
+                                         f'{rotated_rings[current_ring_name]["default_host"]} "admin down", '
+                                         f'а затем возникла ошибка: {operation_port_up} на узле '
+                                         f'{rotated_rings[current_ring_name]["admin_down_host"]} в попытке поднять порт '
+                                         f'{rotated_rings[current_ring_name]["admin_down_port"]}\n'
+                                         f'Далее порт {rotated_rings[current_ring_name]["default_port"]} '
+                                         f'на {rotated_rings[current_ring_name]["default_host"]} был возвращен в исходное состояние (up), '
+                                         f'но на стадии сохранения возникла ошибка: {operation_port_reset}'
+                                         f'\nПроверьте и сохраните конфигурацию!')
+                sys.exit()
+
+            # Если проблема возникла во время стадии сохранения
+            elif 'SAVE' in operation_port_up:
+                email.send_text(subject=f'{current_ring_name} Автоматический разворот кольца FTTB',
+                                text=f'Развернуто кольцо'
+                                     f'\nДействия: '
+                                     f'\n1)  На {rotated_rings[current_ring_name]["default_host"]} порт '
+                                     f'{rotated_rings[current_ring_name]["default_port"]} - "admin down" '
+                                     f'в сторону узла {rotated_rings[current_ring_name]["default_to"]}\n'
+                                     f'2)  На {rotated_rings[current_ring_name]["admin_down_host"]} '
+                                     f'порт {rotated_rings[current_ring_name]["admin_down_port"]} '
+                                     f'- "up" в сторону узла {rotated_rings[current_ring_name]["admin_down_to"]}\n')
+                sys.exit()
+
+            # --------------------------------Порт подняли-----------------------------
+            elif operation_port_up == 'DONE':
+                wait_step = 2
+                all_avaliable = 0
+                while wait_step > 0:
+                    # Ждем 50 секунд
+                    print('Ожидаем 50 сек, не прерывать\n'
+                          '0                       25                       50с')
+                    motr.time_sleep(50)
+                    # Пингуем заново все устройства в кольце с агрегации
+                    new_ping_status = motr.ping_from_device(current_ring_list[0], current_ring)
+                    for _, available in new_ping_status:
+                        if not available:
+                            break  # Если есть недоступное устройство
+                    else:
+                        print("Все устройства в кольце после разворота доступны!\n")
+                        all_avaliable = 1  # Если после разворота все устройства доступны
+                    if all_avaliable or wait_step == 1:
                         break
-                else:
+                    # Если по истечении 50с остались недоступные устройства, то ждем еще 50с
+                    wait_step -= 1
+
+                if all_avaliable:
                     print("Все устройства в кольце после разворота доступны!\nОтправка e-mail")
                     # Отправка e-mail
                     if email_notification == 'enable':
@@ -96,15 +261,4 @@ if __name__ == '__main__':
                 print("После разворота в положение \"по умолчанию\" появились недоступные узлы сети\n"
                       "Выполняем полную проверку заново!")
                 motr.main(new_ping_status, current_ring, current_ring_list, current_ring_name)
-
-            else:   # Если не удалось поднять порт на оборудовании с admin_down, то...
-                # ...поднимаем порт, который положили на предыдущем шаге
-                motr.set_port_status(current_ring,
-                                     rotated_rings[current_ring_name]["default_host"],
-                                     rotated_rings[current_ring_name]["default_port"], "up")
-                print(f'Не удалось поднять порт на оборудовании: {rotated_rings[current_ring_name]["admin_down_host"]}!'
-                      f'\nРазворот кольца остался прежним')
-        else:
-            print(f'Не удалось закрыть порт на оборудовании: {rotated_rings[current_ring_name]["default_host"]}!'
-                  f'\nРазворот кольца остался прежним')
-
+                # Выход
