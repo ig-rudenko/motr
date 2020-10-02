@@ -470,6 +470,10 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                     successor_to = double_current_ring_list[current_ring_list.index(successor_name) + i]
                     successor_intf = find_port_by_desc(current_ring, successor_name, successor_to)
 
+                    email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
+                                    text=f'Закрываем порт {successor_intf} на {successor_name}\n'
+                                         f'Поднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}')
+
                     # -----------------------------Закрываем порт на преемнике------------------------------------------
                     try_to_set_port = 2
                     while try_to_set_port > 0:

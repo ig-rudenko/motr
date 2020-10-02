@@ -57,6 +57,11 @@ if __name__ == '__main__':
     else:   # Когда все узлы сети в кольце доступны, то...
         print("ALL DEVICES AVAILABLE!\nНачинаем разворот")
 
+        email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
+                        text=f'Закрываем порт {rotated_rings[current_ring_name]["default_port"]} '
+                             f'на {rotated_rings[current_ring_name]["default_host"]}\n'
+                             f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_port"]} '
+                             f'на {rotated_rings[current_ring_name]["admin_down_host"]}')
         # -----------------------------Закрываем порт на default_host------------------------------------------
         try_to_set_port = 2
         while try_to_set_port > 0:
