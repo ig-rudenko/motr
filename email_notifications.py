@@ -100,7 +100,8 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
 
 if __name__ == '__main__':
 
-    ring_name = '12-Kosareva2-SSW2_p21_p22'
+    # ДЛЯ ТЕСТА
+    ring_name = 'IGNORE_THIS_12-Kosareva2-SSW2_p21_p22'
     info = '\nВозможен обрыв кабеля между SVSL-01-MotR-SSW1 и GP15-Tech623in-ASW2\n'
     devices_ping = [
         ('SVSL-01-MotR-SSW1', True),

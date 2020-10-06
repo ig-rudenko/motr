@@ -7,6 +7,7 @@ import sys
 import os
 from datetime import datetime
 import email_notifications as email
+from re import findall
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 successor_name = ''
@@ -57,8 +58,19 @@ if __name__ == '__main__':
     else:   # Когда все узлы сети в кольце доступны, то...
         print("ALL DEVICES AVAILABLE!\nНачинаем разворот")
 
+        status_before = ''
+        for device in current_ring_list:
+            for dev_name, status in devices_ping:
+                if device == dev_name and not bool(findall('SSW', device)):
+                    if status:
+                        status_before += ' ' * 10 + f'доступно   {device}\n'
+                    else:
+                        status_before += ' ' * 10 + f'недоступно {device}\n'
+
         email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
-                        text=f'Закрываем порт {rotated_rings[current_ring_name]["default_port"]} '
+                        text=f'Состояние кольца до разворота: \n {status_before}'
+                             f'\nБудут выполнены следующие действия:'
+                             f'\nЗакрываем порт {rotated_rings[current_ring_name]["default_port"]} '
                              f'на {rotated_rings[current_ring_name]["default_host"]}\n'
                              f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_port"]} '
                              f'на {rotated_rings[current_ring_name]["admin_down_host"]}')

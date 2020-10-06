@@ -470,9 +470,20 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                     successor_to = double_current_ring_list[current_ring_list.index(successor_name) + i]
                     successor_intf = find_port_by_desc(current_ring, successor_name, successor_to)
 
+                    status_before = ''
+                    for device in current_ring_list:
+                        for dev_name, status in devices_ping:
+                            if device == dev_name and not bool(findall('SSW', device)):
+                                if status:
+                                    status_before += ' ' * 10 + f'доступно   {device}\n'
+                                else:
+                                    status_before += ' ' * 10 + f'недоступно {device}\n'
+
                     email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
-                                    text=f'Закрываем порт {successor_intf} на {successor_name}\n'
-                                         f'Поднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}')
+                                    text=f'Состояние кольца до разворота: \n {status_before}'
+                                         f'\nБудут выполнены следующие действия:'
+                                         f'\nЗакрываем порт {successor_intf} на {successor_name}'
+                                         f'\nПоднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}')
 
                     # -----------------------------Закрываем порт на преемнике------------------------------------------
                     try_to_set_port = 2
@@ -1085,7 +1096,6 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                     telnet.sendline('disable clipaging')
                     telnet.expect('#')
                     telnet.sendline("show ports des")
-                    print('sh ports des')
                     telnet.expect('#')
                     output = telnet.before.decode('utf-8')
                     telnet.sendline('logout')
@@ -1549,7 +1559,7 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                     while try_to_save > 0:
                         telnet.sendline('write')
                         print(f"    {device}#write")
-                        telnet.expect('Building configuration')
+                        telnet.expect('Building')
                         if telnet.expect(['OK', '#$']) == 0:
                             print("    Saved!")
                             telnet.sendline('exit')
@@ -1695,7 +1705,7 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                         print('    LOGOUT!')
                         return 'cant set up'
             except Exception as e:
-                print(f"    Exeption: {e}")
+                print(f"    Exсeption: {e}")
                 return 'Exception: cant set port status'
             # -------------------------D-Link - SAVE----------------------------------
             try:
@@ -1703,7 +1713,7 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                     telnet.sendline('save')
                     print(f'    {device}#save')
                     telnet.expect('Command: save')
-                    m = telnet.expect(['[Ss]uccess', '#'])
+                    m = telnet.expect(['[Ss]uccess|Done', '#'])
                     if m == 0:
                         print("    Saved!")
                         telnet.sendline('logout')
@@ -2105,7 +2115,7 @@ if __name__ == '__main__':
             print(f'\n\033[4mDeploying rings\033[0m: \033[32m{len(deploying_rings)}\033[0m')
             for line in deploying_rings:
                 print(line)
-            print(f'\n\033[4mRotated rings\033[0m: \033[32m{len(r_rings)}\033[0m')
+            print(f'\n\033[4mRotated rings\033[0m: \033[32m{len(r_rings)-1}\033[0m')
             for line in r_rings:
                 if line:
                     print(line)
