@@ -1337,7 +1337,9 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                                 output += '\n'
                             else:
                                 break
-                        print(f'\n----{output}\n----')
+                        print(f'\n----------------------------------'
+                              f'\n{output}'
+                              f'\n----------------------------------')
                         if 'interface' in output and 'shutdown' in output:
                             print(f'    Порт {interface} admin down!')
                             break
@@ -1377,7 +1379,9 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                                 output += '\n'
                             else:
                                 break
-                        print(output)
+                        print(f'\n----------------------------------'
+                              f'\n{output}'
+                              f'\n----------------------------------')
                         if 'interface' in output and 'shutdown' not in output:    # не в down
                             print(f'    Порт {interface} admin up!')
                             break
@@ -1465,7 +1469,9 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                                 output += '\n'
                             else:
                                 break
-                        #print(f'\n----{output}\n----')
+                        print(f'\n----------------------------------'
+                              f'\n{output}'
+                              f'\n----------------------------------')
                         if 'interface' in output and 'shutdown' in output:
                             print(f'    Порт {interface} admin down!')
                             break
@@ -1514,7 +1520,9 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                                 output += '\n'
                             else:
                                 break
-                        #print(f'\n----{output}\n----')
+                        print(f'\n----------------------------------'
+                              f'\n{output}'
+                              f'\n----------------------------------')
                         if 'interface' in output and 'shutdown' not in output:
                             print(f'    Порт {interface} admin up!')
                             break
@@ -1909,6 +1917,9 @@ def find_port_by_desc(ring: dict, main_name: str, target_name: str):
             return line[0]    # Интерфейс
 
 
+#
+
+
 def get_config(conf: str = None):
     '''
     Переопределяет глобальные переменные считывая файл конфигурации "config.conf", если такового не существует,
@@ -1983,6 +1994,9 @@ def get_rings() -> list:
     return [i for i in set(rings_files)]
 
 
+# Функции для ключевых слов
+
+
 def print_help():
     print('''
 Usage:  motr.py [-D DEVICE [OPTIONS]]
@@ -2001,9 +2015,6 @@ Options:
     --conf          Show config file path and variables
     --stat          Show information about rings
     ''')
-
-
-# Функции для ключевых слов
 
 
 def check_descriptions(ring: dict, dev_list: list) -> bool:
