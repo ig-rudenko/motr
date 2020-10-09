@@ -1917,7 +1917,7 @@ def find_port_by_desc(ring: dict, main_name: str, target_name: str):
             return line[0]    # Интерфейс
 
 
-#
+# Конфигурация
 
 
 def get_config(conf: str = None):

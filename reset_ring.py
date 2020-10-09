@@ -234,7 +234,9 @@ if __name__ == '__main__':
                                      f'в сторону узла {rotated_rings[current_ring_name]["default_to"]}\n'
                                      f'2)  На {rotated_rings[current_ring_name]["admin_down_host"]} '
                                      f'порт {rotated_rings[current_ring_name]["admin_down_port"]} '
-                                     f'- "up" в сторону узла {rotated_rings[current_ring_name]["admin_down_to"]}\n')
+                                     f'- "up" в сторону узла {rotated_rings[current_ring_name]["admin_down_to"]} '
+                                     f'но не была сохранена конфигурация!\n')
+                motr.delete_ring_from_deploying_list(current_ring_name)
                 sys.exit()
 
             # --------------------------------Порт подняли-----------------------------
@@ -277,5 +279,6 @@ if __name__ == '__main__':
                 # Если в кольце есть недоступные устройства
                 print("После разворота в положение \"по умолчанию\" появились недоступные узлы сети\n"
                       "Выполняем полную проверку заново!")
+                motr.delete_ring_from_deploying_list(current_ring_name)
                 motr.main(new_ping_status, current_ring, current_ring_list, current_ring_name)
                 # Выход
