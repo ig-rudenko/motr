@@ -2,6 +2,29 @@ import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 from re import findall
+import configparser
+import os
+import sys
+
+root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
+
+
+def to_address() -> list:
+    if not os.path.exists(f'{root_dir}/config.conf'):
+        config = configparser.ConfigParser()
+        config.add_section('Settings')
+        config.set("Settings", 'email_notification', 'enable')
+        config.set("Settings", 'rings_directory', '~rings/*')
+        config.set("Email", 'to_address', 'noc@sevtelecom.ru')
+        with open('config.conf', 'w') as cf:
+            config.write(cf)
+    config = configparser.ConfigParser()
+    config.read(f'{root_dir}/config.conf')
+    to_addr = config.get("Email", 'to_address').split(',')
+    to_address_list = [x.strip() for x in to_addr if to_addr and '@' in x]
+    if not to_address_list:
+        to_address_list = ['noc@sevtelecom.ru']
+    return to_address_list
 
 
 def send_text(subject: str, text: str):
@@ -10,6 +33,7 @@ def send_text(subject: str, text: str):
     server_password = '1qaz2wsx!'
 
     to_addresses = ['atemnyh@sevtelecom.ru', 'irudenko@sevtelecom.ru', 'noc@sevtelecom.ru']
+    to_addresses = to_address()
     from_address = 'irudenko@sevtelecom.ru'
 
     message = MIMEText(text, 'plain', 'utf-8')
@@ -44,58 +68,34 @@ def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_de
     :param info:                Дополнительная информация
     :return:
     '''
-    host = 'mail.sevtelecom.ru'
-    server_login = 'irudenko'
-    server_password = '1qaz2wsx!'
 
-    to_addresses = ['atemnyh@sevtelecom.ru', 'irudenko@sevtelecom.ru', 'noc@sevtelecom.ru']
-    from_address = 'irudenko@sevtelecom.ru'
-
-    status_before = ''
-    status_after = ''
-
-    for device in current_ring_list:
-        for dev_name, status in old_devices_ping:
-            if device == dev_name and not bool(findall('SSW', device)):
-                if status:
-                    status_before += ' ' * 10 + f'доступно   {device}\n'
-                else:
-                    status_before += ' ' * 10 + f'недоступно {device}\n'
-
-    for device in current_ring_list:
-        for dev_name, status in new_devices_ping:
-            if device == dev_name and not bool(findall('SSW', device)):
-                if status:
-                    status_after += ' ' * 10 + f'доступно   {device}\n'
-                else:
-                    status_after += ' ' * 10 + f'недоступно {device}\n'
+    stat = ['', '']
+    dev_stat = [old_devices_ping, new_devices_ping]
+    for position, _ in enumerate(dev_stat):
+        for device in current_ring_list:
+            for dev_name, status in dev_stat[position]:
+                if device == dev_name and not bool(findall('SSW', device)):
+                    if status:
+                        stat[position] += ' ' * 10 + f'доступно   {device}\n'
+                    else:
+                        stat[position] += ' ' * 10 + f'недоступно {device}\n'
 
     subject = f'{ring_name} Автоматический разворот кольца FTTB'
 
-    if status_after == status_before:
+    if stat[0] == stat[1]:
         info += '\nНичего не поменялось, знаю, но так надо :)'
 
-    text = f'Состояние кольца до разворота: \n {status_before}'\
+    text = f'Состояние кольца до разворота: \n {stat[0]}'\
            f'\nДействия: '\
            f'\n1)  На {admin_down_host} порт {admin_down_port} - "admin down" '\
            f'в сторону узла {admin_down_to}\n'\
            f'2)  На {up_host} порт {up_port} - "up" '\
            f'в сторону узла {up_to}\n'\
-           f'\nСостояние кольца после разворота: \n {status_after} \n'\
+           f'\nСостояние кольца после разворота: \n {stat[1]} \n'\
            f'{info}'
 
-    message = MIMEText(text, 'plain', 'utf-8')
-    message['Subject'] = Header(subject, 'utf-8')
-    message['From'] = 'ZABBIX@sevtelecom.ru'
-    message['To'] = 'irudenko@sevtelecom.ru'
-
-    with smtplib.SMTP(host, 587) as server:
-        server.login(server_login, server_password)
-
-        server.sendmail(from_addr='irudenko@sevtelecom.ru',
-                        to_addrs=to_addresses,
-                        msg=message.as_string())
-        server.quit()
+    send_text(subject=subject,
+              text=text)
 
 
 if __name__ == '__main__':

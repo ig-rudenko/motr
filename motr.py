@@ -1933,6 +1933,7 @@ def get_config(conf: str = None):
         config.add_section('Settings')
         config.set("Settings", 'email_notification', 'enable')
         config.set("Settings", 'rings_directory', '~rings/*')
+        config.set("Email", 'to_address', 'noc@sevtelecom.ru')
         with open('config.conf', 'w') as cf:
             config.write(cf)
     config = configparser.ConfigParser()
@@ -2138,7 +2139,7 @@ if __name__ == '__main__':
             print(f'    email_notification = \033[34m{config.get("Settings", "email_notification")}\033[0m')
             print(f'    rings_directory = \033[34m{config.get("Settings", "rings_directory")}\033[0m\n')
 
-        if key == '-D' or key == '--device' and validation(rings_files):
+        if (key == '-D' or key == '--device') and validation(rings_files):
             if len(sys.argv) > i+1:
                 if len(sys.argv) > i+2 and sys.argv[i+2] == '--check':
                     check_admin_down(sys.argv[i + 1])
