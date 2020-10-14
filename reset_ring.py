@@ -67,8 +67,9 @@ if __name__ == '__main__':
                     else:
                         status_before += ' ' * 10 + f'недоступно {device}\n'
 
-        email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
+        email.send_text(subject=f'Восстанавление кольца {current_ring_name}',
                         text=f'Состояние кольца до разворота: \n {status_before}'
+                             f'\nВсе устройства доступны, поэтому возвращаем кольцо в прежнее состояние'
                              f'\nБудут выполнены следующие действия:'
                              f'\nЗакрываем порт {rotated_rings[current_ring_name]["default_port"]} '
                              f'на {rotated_rings[current_ring_name]["default_host"]}\n'
@@ -222,7 +223,6 @@ if __name__ == '__main__':
                                          f'на {rotated_rings[current_ring_name]["default_host"]} был возвращен в исходное состояние (up), '
                                          f'но на стадии сохранения возникла ошибка: {operation_port_reset}'
                                          f'\nПроверьте и сохраните конфигурацию!')
-                sys.exit()
 
             # Если проблема возникла во время стадии сохранения
             elif 'SAVE' in operation_port_up:
@@ -236,8 +236,6 @@ if __name__ == '__main__':
                                      f'порт {rotated_rings[current_ring_name]["admin_down_port"]} '
                                      f'- "up" в сторону узла {rotated_rings[current_ring_name]["admin_down_to"]} '
                                      f'но не была сохранена конфигурация!\n')
-                motr.delete_ring_from_deploying_list(current_ring_name)
-                sys.exit()
 
             # --------------------------------Порт подняли-----------------------------
             elif operation_port_up == 'DONE':
@@ -281,4 +279,7 @@ if __name__ == '__main__':
                       "Выполняем полную проверку заново!")
                 motr.delete_ring_from_deploying_list(current_ring_name)
                 motr.main(new_ping_status, current_ring, current_ring_list, current_ring_name)
+                sys.exit()
                 # Выход
+
+        motr.delete_ring_from_deploying_list(current_ring_name)
