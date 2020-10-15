@@ -113,7 +113,7 @@ def ping_from_device(device: str, ring: dict):
                             match = telnet.expect(['Request timed out', 'Command: ping', 'Reply from'])
                         # Alcatel, Linksys
                         elif bool(findall(r'SW version', version)):
-                            pass
+                            match = telnet.expect([' 0 packets received','Host not found', 'min/avg/max'])
                         # Eltex
                         elif bool(findall(r'Active-image: ', version)):
                             match = telnet.expect(['PING: timeout', 'Host not found', 'bytes from'])
@@ -960,7 +960,7 @@ def start(dev: str):
 
 def time_sleep(sec: int) -> None:
     '''
-    Пауза с выводом точки в одну строку, равную количеству секунд ожидания \n
+    Пауза с выводом вертикальной линии в одну строку, равную количеству секунд ожидания \n
     :param sec: время в секундах
     :return: None
     '''
@@ -2136,8 +2136,18 @@ if __name__ == '__main__':
             print(f'Файл конфигурации: \033[32m{root_dir}/config.conf\033[0m\n')
             config = configparser.ConfigParser()
             config.read(f'{root_dir}/config.conf')
-            print(f'    email_notification = \033[34m{config.get("Settings", "email_notification")}\033[0m')
-            print(f'    rings_directory = \033[34m{config.get("Settings", "rings_directory")}\033[0m\n')
+            print('[\033[32mSettings\033[0m]')
+            print(f'    email_notification = {config.get("Settings", "email_notification")}')
+            rd = config.get("Settings", "rings_directory").split(',')
+            print(f'    rings_directory = {rd[0]}')
+            for d in rd[1:]:
+                print(' '*21+d)
+            print('\n[\033[32mEmail\033[0m]')
+            to_addr = config.get("Email", "to_address").split(',')
+            print(f'    to_address = \033[35m{to_addr[0].split("@")[0]}\033[37m@{to_addr[0].split("@")[1]}\033[0m')
+            for addr in to_addr[1:]:
+                print(' '*16 + f'\033[35m{addr.split("@")[0]}\033[37m@{addr.split("@")[1]}\033[0m')
+            print()
 
         if (key == '-D' or key == '--device') and validation(rings_files):
             if len(sys.argv) > i+1:
