@@ -3,7 +3,7 @@ import os
 import sys
 
 
-def log(text: str):
+def lprint(text: str):
     print(text)
     today = date.today().strftime("%d-%m-%Y")
     root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
@@ -15,6 +15,6 @@ def log(text: str):
 
 
 if __name__ == '__main__':
-    log('    hello world')
-    log('----------------')
-    log('    done!')
+    lprint('    hello world')
+    lprint('----------------')
+    lprint('    done!')

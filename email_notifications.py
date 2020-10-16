@@ -41,6 +41,8 @@ def send_text(subject: str, text: str):
     message['From'] = 'ZABBIX@sevtelecom.ru'
     message['To'] = 'irudenko@sevtelecom.ru'
 
+
+
     with smtplib.SMTP(host, 587) as server:
         server.login(server_login, server_password)
 
