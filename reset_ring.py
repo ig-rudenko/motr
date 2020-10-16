@@ -8,55 +8,59 @@ import os
 from datetime import datetime
 import email_notifications as email
 from re import findall
+from logs import lrprint
+from config import get_config
+from device_control import set_port_status
+from device_control import ping_devices, ping_from_device
+from validation import validation
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 successor_name = ''
-email_notification = 'enable'
-rings_files = []
 
 if __name__ == '__main__':
 
     if len(sys.argv) == 1:
-        print("Не указано имя узла сети!")
+        lrprint("Не указано имя узла сети!")
         sys.exit()
-    motr.get_config()
-    if not motr.validation(rings_files):
+    rings_files = get_config("rings_directory")
+    email_notification = get_config("email_notification")
+    if not validation(rings_files):
         sys.exit()
 
     dev = sys.argv[1]
-    get_ring_ = motr.get_ring(dev)
+    get_ring_ = motr.get_ring(dev, rings_files)
     if not get_ring_:
         sys.exit()
     current_ring, current_ring_list, current_ring_name = get_ring_
 
     # Заголовок
-    print('\n')
-    print('-' * 20 + 'NEW SESSION' + '-' * 20)
-    print(' ' * 12 + str(datetime.now()))
-    print(' ' * ((51 - len(dev)) // 2) + dev + ' ' * ((51 - len(dev)) // 2))
-    print('-' * 51)
+    lrprint('\n')
+    lrprint('-' * 20 + 'NEW SESSION' + '-' * 20)
+    lrprint(' ' * 12 + str(datetime.now()))
+    lrprint(' ' * ((51 - len(dev)) // 2) + dev + ' ' * ((51 - len(dev)) // 2))
+    lrprint('-' * 51)
 
     with open(f'{root_dir}/rotated_rings.yaml') as rings_yaml:  # Чтение файла
         rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
         for ring in rotated_rings:
             if current_ring_name == ring and rotated_rings[ring] == 'Deploying':
-                print("Кольцо в данный момент разворачивается!")
+                lrprint("Кольцо в данный момент разворачивается!")
                 sys.exit()
             elif current_ring_name == ring and rotated_rings[ring]['priority'] == 1:           # Найдено
-                print("GOT RING: "+ring)
+                lrprint("GOT RING: "+ring)
                 break
         else:
-            print('Кольцо не находится в списке колец требуемых к развороту "по умолчанию"')
+            lrprint('Кольцо не находится в списке колец требуемых к развороту "по умолчанию"')
             sys.exit()      # Выход
 
-    devices_ping = motr.ping_devices(current_ring)
+    devices_ping = ping_devices(current_ring)
 
     for device_name, device_status in devices_ping:
         if not device_status:
-            print("Не все узлы сети в кольце восстановлены, дальнейший разворот прерван!")
+            lrprint("Не все узлы сети в кольце восстановлены, дальнейший разворот прерван!")
             break
     else:   # Когда все узлы сети в кольце доступны, то...
-        print("ALL DEVICES AVAILABLE!\nНачинаем разворот")
+        lrprint("ALL DEVICES AVAILABLE!\nНачинаем разворот")
 
         status_before = ''
         for device in current_ring_list:
@@ -78,17 +82,17 @@ if __name__ == '__main__':
         # -----------------------------Закрываем порт на default_host------------------------------------------
         try_to_set_port = 2
         while try_to_set_port > 0:
-            print(f'Закрываем порт {rotated_rings[current_ring_name]["default_port"]} '
+            lrprint(f'Закрываем порт {rotated_rings[current_ring_name]["default_port"]} '
                   f'на {rotated_rings[current_ring_name]["default_host"]}')
-            operation_port_down = motr.set_port_status(current_ring=current_ring,
-                                                       device=rotated_rings[current_ring_name]["default_host"],
-                                                       interface=rotated_rings[current_ring_name]["default_port"],
-                                                       status="down")
+            operation_port_down = set_port_status(current_ring=current_ring,
+                                                  device=rotated_rings[current_ring_name]["default_host"],
+                                                  interface=rotated_rings[current_ring_name]["default_port"],
+                                                  status="down")
             # Если поймали исключение, то пробуем еще один раз
             if 'Exception' in operation_port_down and 'SAVE' not in operation_port_down:
                 try_to_set_port -= 1
                 if try_to_set_port > 1:
-                    print('\nПробуем еще один раз закрыть порт\n')
+                    lrprint('\nПробуем еще один раз закрыть порт\n')
                 continue
             break
 
@@ -121,17 +125,17 @@ if __name__ == '__main__':
             # открываем порт
             try_to_set_port = 2
             while try_to_set_port > 0:
-                print(f'Открываем порт {rotated_rings[current_ring_name]["default_port"]} на '
+                lrprint(f'Открываем порт {rotated_rings[current_ring_name]["default_port"]} на '
                       f'{rotated_rings[current_ring_name]["default_host"]}')
-                operation_port_up = motr.set_port_status(current_ring=current_ring,
-                                                         device=rotated_rings[current_ring_name]["default_host"],
-                                                         interface=rotated_rings[current_ring_name]["default_port"],
-                                                         status="up")
+                operation_port_up = set_port_status(current_ring=current_ring,
+                                                    device=rotated_rings[current_ring_name]["default_host"],
+                                                    interface=rotated_rings[current_ring_name]["default_port"],
+                                                    status="up")
                 # Если поймали исключение, то пробуем еще один раз
                 if 'Exception' in operation_port_up and 'SAVE' not in operation_port_up:
                     try_to_set_port -= 1
                     if try_to_set_port > 1:
-                        print('\nПробуем еще один раз открыть порт\n')
+                        lrprint('\nПробуем еще один раз открыть порт\n')
                     continue
                 break
             if operation_port_up == 'DONE' or 'DONT SAVE' in operation_port_up:
@@ -168,23 +172,23 @@ if __name__ == '__main__':
         elif operation_port_down == 'DONE':
 
             # ---------------------Поднимаем порт на admin_down_device--------------------------------------
-            print(f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_port"]} '
+            lrprint(f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_port"]} '
                   f'на {rotated_rings[current_ring_name]["admin_down_host"]}')
-            operation_port_up = motr.set_port_status(current_ring=current_ring,
-                                                     device=rotated_rings[current_ring_name]["admin_down_host"],
-                                                     interface=rotated_rings[current_ring_name]["admin_down_port"],
-                                                     status="up")
+            operation_port_up = set_port_status(current_ring=current_ring,
+                                                device=rotated_rings[current_ring_name]["admin_down_host"],
+                                                interface=rotated_rings[current_ring_name]["admin_down_port"],
+                                                status="up")
 
             # Если проблема возникла до стадии сохранения
             if 'SAVE' not in operation_port_up and 'DONE' not in operation_port_up:
                 # Восстанавливаем порт на преемнике в исходное состояние (up)
-                print(f'\nВосстанавливаем порт {rotated_rings[current_ring_name]["default_port"]} на '
+                lrprint(f'\nВосстанавливаем порт {rotated_rings[current_ring_name]["default_port"]} на '
                       f'{rotated_rings[current_ring_name]["default_host"]} '
                       f'в исходное состояние (up)\n')
-                operation_port_reset = motr.set_port_status(current_ring=current_ring,
-                                                            device=rotated_rings[current_ring_name]["default_host"],
-                                                            interface=rotated_rings[current_ring_name]["default_port"],
-                                                            status="up")
+                operation_port_reset = set_port_status(current_ring=current_ring,
+                                                       device=rotated_rings[current_ring_name]["default_host"],
+                                                       interface=rotated_rings[current_ring_name]["default_port"],
+                                                       status="up")
                 if operation_port_reset == 'DONE':
                     email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
                                     text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
@@ -243,16 +247,16 @@ if __name__ == '__main__':
                 all_avaliable = 0
                 while wait_step > 0:
                     # Ждем 50 секунд
-                    print('Ожидаем 50 сек, не прерывать\n'
+                    lrprint('Ожидаем 50 сек, не прерывать\n'
                           '0                       25                       50с')
                     motr.time_sleep(50)
                     # Пингуем заново все устройства в кольце с агрегации
-                    new_ping_status = motr.ping_from_device(current_ring_list[0], current_ring)
+                    new_ping_status = ping_from_device(current_ring_list[0], current_ring)
                     for _, available in new_ping_status:
                         if not available:
                             break  # Если есть недоступное устройство
                     else:
-                        print("Все устройства в кольце после разворота доступны!\n")
+                        lrprint("Все устройства в кольце после разворота доступны!\n")
                         all_avaliable = 1  # Если после разворота все устройства доступны
                     if all_avaliable or wait_step == 1:
                         break
@@ -260,7 +264,7 @@ if __name__ == '__main__':
                     wait_step -= 1
 
                 if all_avaliable:
-                    print("Все устройства в кольце после разворота доступны!\nОтправка e-mail")
+                    lrprint("Все устройства в кольце после разворота доступны!\nОтправка e-mail")
                     # Отправка e-mail
                     if email_notification == 'enable':
                         email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
@@ -269,13 +273,14 @@ if __name__ == '__main__':
                                    rotated_rings[current_ring_name]['default_to'],
                                    rotated_rings[current_ring_name]['admin_down_host'],
                                    rotated_rings[current_ring_name]['admin_down_port'],
-                                   rotated_rings[current_ring_name]['admin_down_to'])
+                                   rotated_rings[current_ring_name]['admin_down_to'],
+                                   info='Кольцо было развернуто в прежнее состояние!')
 
                     motr.delete_ring_from_deploying_list(current_ring_name) # Удаляем кольцо из списка требуемых к развороту
                     sys.exit()      # Завершение работы программы
 
                 # Если в кольце есть недоступные устройства
-                print("После разворота в положение \"по умолчанию\" появились недоступные узлы сети\n"
+                lrprint("После разворота в положение \"по умолчанию\" появились недоступные узлы сети\n"
                       "Выполняем полную проверку заново!")
                 motr.delete_ring_from_deploying_list(current_ring_name)
                 motr.main(new_ping_status, current_ring, current_ring_list, current_ring_name)

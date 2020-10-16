@@ -10,16 +10,13 @@ from datetime import datetime
 import time
 import email_notifications as email     # Отправка Email
 from logs import lprint                 # Запись логов
-import configparser                     # Чтение конфигурационного файла
 from tabulate import tabulate
 from device_control import interfaces, search_admin_down, set_port_status, find_port_by_desc
 from device_control import ping_devices, ping_from_device
-
+from config import get_config, set_default_config
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 global email_notification
-global rings_files
-
 
 def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str):
     '''
@@ -40,7 +37,7 @@ def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str)
         return False
 
 
-def get_ring(device_name: str) -> tuple:
+def get_ring(device_name: str, rings_files: list) -> tuple:
     '''
     Функция для поиска кольца, к которому относится переданный узел сети \n
     :param device_name: Уникальное имя узла сети
@@ -338,12 +335,11 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
                                     yaml.dump(ring_to_save, save_ring, default_flow_style=False)
                                 # Отправка e-mail
-                                if email_notification == 'enable':
-                                    email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
-                                               successor_name, successor_intf, successor_to,
-                                               admin_down['device'], admin_down['interface'][0],
-                                               admin_down['next_device'][0])
-                                    lprint("Отправлено письмо!")
+                                email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
+                                           successor_name, successor_intf, successor_to,
+                                           admin_down['device'], admin_down['interface'][0],
+                                           admin_down['next_device'][0])
+                                lprint("Отправлено письмо!")
                                 sys.exit()
 
                             # Если на втором проходе у нас при развороте кольца, снова все узлы доступны, то
@@ -365,19 +361,19 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 # Отправка e-mail
                                 info = f'Возможен обрыв кабеля между {successor_name} и ' \
                                        f'{double_current_ring_list[current_ring_list.index(successor_name) + i]}\n'
-                                if email_notification == 'enable':
-                                    email.send(ring_name=current_ring_name,
-                                               current_ring_list=current_ring_list,
-                                               old_devices_ping=devices_ping,
-                                               new_devices_ping=new_ping_status,
-                                               admin_down_host=successor_name,
-                                               admin_down_port=successor_intf,
-                                               admin_down_to=successor_to,
-                                               up_host=admin_down['device'],
-                                               up_port=admin_down['interface'][0],
-                                               up_to=admin_down['next_device'][0],
-                                               info=info)
-                                    lprint("Отправлено письмо!")
+
+                                email.send(ring_name=current_ring_name,
+                                           current_ring_list=current_ring_list,
+                                           old_devices_ping=devices_ping,
+                                           new_devices_ping=new_ping_status,
+                                           admin_down_host=successor_name,
+                                           admin_down_port=successor_intf,
+                                           admin_down_to=successor_to,
+                                           up_host=admin_down['device'],
+                                           up_port=admin_down['interface'][0],
+                                           up_to=admin_down['next_device'][0],
+                                           info=info)
+                                lprint("Отправлено письмо!")
                                 sys.exit()
 
                             # Если после разворота все узлы сети доступны, то это может быть обрыв кабеля, либо
@@ -556,19 +552,18 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                             with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
                                 yaml.dump(ring_to_save, save_ring, default_flow_style=False)
                             # Отправка e-mail
-                            if email_notification == 'enable':
-                                email.send(ring_name=current_ring_name,
-                                           current_ring_list=current_ring_list,
-                                           old_devices_ping=devices_ping,
-                                           new_devices_ping=new_ping_status,
-                                           admin_down_host=successor_name,
-                                           admin_down_port=successor_intf,
-                                           admin_down_to=successor_to,
-                                           up_host=admin_down['device'],
-                                           up_port=admin_down['interface'][0],
-                                           up_to=admin_down['next_device'][0],
-                                           info=info)
-                                lprint("Отправлено письмо!")
+                            email.send(ring_name=current_ring_name,
+                                       current_ring_list=current_ring_list,
+                                       old_devices_ping=devices_ping,
+                                       new_devices_ping=new_ping_status,
+                                       admin_down_host=successor_name,
+                                       admin_down_port=successor_intf,
+                                       admin_down_to=successor_to,
+                                       up_host=admin_down['device'],
+                                       up_port=admin_down['interface'][0],
+                                       up_to=admin_down['next_device'][0],
+                                       info=info)
+                            lprint("Отправлено письмо!")
                             sys.exit()
 
                     else:
@@ -587,7 +582,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
 
 
 def start(dev: str):
-    get_ring_ = get_ring(dev)
+    get_ring_ = get_ring(dev, rings_files)
     if not get_ring_:
         sys.exit()
     current_ring, current_ring_list, current_ring_name = get_ring_
@@ -634,87 +629,9 @@ def time_sleep(sec: int) -> None:
     :return: None
     '''
     for s in range(sec):
-        lprint('|', end='', flush=True)
+        print('|', end='', flush=True)
         time.sleep(1)
     lprint('\n')
-
-
-# Конфигурация
-
-
-def get_config(conf: str = None):
-    '''
-    Переопределяет глобальные переменные считывая файл конфигурации "config.conf", если такового не существует,
-    то создает с настройками по умолчанию \n
-    :return: None
-    '''
-    global email_notification
-    global rings_files
-    if not os.path.exists(f'{root_dir}/config.conf'):
-        config = configparser.ConfigParser()
-        config.add_section('Settings')
-        config.set("Settings", 'email_notification', 'enable')
-        config.set("Settings", 'rings_directory', '~rings/*')
-        config.set("Email", 'to_address', 'noc@sevtelecom.ru')
-        with open('config.conf', 'w') as cf:
-            config.write(cf)
-    config = configparser.ConfigParser()
-    config.read(f'{root_dir}/config.conf')
-    email_notification = 'enable' if config.get("Settings", 'email_notification') == 'enable' else 'disable'
-    rings_files = get_rings()
-
-    if conf == 'rings_files':
-        return rings_files
-    elif conf == 'email_notification':
-        return email_notification
-
-
-def return_files(path: str) -> list:
-    '''
-    Возвращает все файлы в папке и подпапках \n
-    :param path: Путь до папки
-    :return:     Список файлов
-    '''
-    files = os.listdir(path)
-    rings_f = []
-    for file in files:
-        if os.path.isfile(os.path.join(path, file)):
-            rings_f.append(os.path.join(path, file))
-        elif os.path.isdir(os.path.join(path, file)):
-            rings_f += return_files(os.path.join(path, file))
-    return rings_f
-
-
-def get_rings() -> list:
-    '''
-    Из конфигурационного файла достаем переменную "rings_directory" и указываем все найденные файлы \n
-    :return: Список файлов с кольцами
-    '''
-    config = configparser.ConfigParser()
-    config.read(f'{root_dir}/config.conf')
-
-    rings_directory = config.get("Settings", 'rings_directory').split(',')
-    rings_files = []
-
-    for elem in rings_directory:
-        elem = elem.strip()
-        elem = elem[:-2] if elem.endswith('/*') else elem
-        elem = elem[:-1] if elem.endswith('/') else elem
-        elem = os.path.join(root_dir, elem[1:]) if elem.startswith('~') else elem
-        if bool(findall('\w\*$', elem)):
-            root, head = os.path.split(elem)
-            sub_files = os.listdir(root)
-            for sub_elem in sub_files:
-                if sub_elem.startswith(head[:-1]):
-                    if os.path.isfile(os.path.join(root, sub_elem)):
-                        rings_files.append(os.path.join(root, sub_elem))
-                    elif os.path.isdir(os.path.join(root, sub_elem)):
-                        rings_files += return_files(os.path.join(root, sub_elem))
-        if os.path.isfile(elem):
-            rings_files.append(elem)
-        elif os.path.isdir(elem):
-            rings_files += return_files(elem)
-    return [i for i in set(rings_files)]
 
 
 # Функции для ключевых слов
@@ -772,7 +689,7 @@ def show_all_int(device: str):
     def get_interface(ring: dict, dev: str):
         result[dev] = interfaces(ring, dev, enable_print=False)
 
-    get_ring_ = get_ring(device)
+    get_ring_ = get_ring(device, rings_files)
     if not get_ring_:
         sys.exit()
     ring, ring_list, ring_name = get_ring_
@@ -795,7 +712,7 @@ def check_admin_down(device: str):
     def get_ad(ring, ring_list, device):
         output_check[device] = search_admin_down(ring, ring_list, device, enable_print=False)
 
-    get_ring_ = get_ring(device)
+    get_ring_ = get_ring(device, rings_files)
     if not get_ring_:
         sys.exit()
     ring, ring_list, ring_name = get_ring_
@@ -822,7 +739,8 @@ if __name__ == '__main__':
         print_help()
         sys.exit()
 
-    rings_files = get_config('rings_files')
+    rings_files = get_config('rings_directory')
+    email_notification = get_config('email_notification')
 
     from validation import validation  # Проверка файлов колец на валидность
 
@@ -858,17 +776,17 @@ if __name__ == '__main__':
                     print(line)
 
         if key == '--conf':
+            if not os.path.exists(f'{root_dir}/config.conf'):
+                set_default_config()
             print(f'Файл конфигурации: \033[32m{root_dir}/config.conf\033[0m\n')
-            config = configparser.ConfigParser()
-            config.read(f'{root_dir}/config.conf')
             print('[\033[32mSettings\033[0m]')
-            print(f'    email_notification = {config.get("Settings", "email_notification")}')
-            rd = config.get("Settings", "rings_directory").split(',')
+            print(f'    email_notification = {get_config("email_notification")}')
+            rd = get_config('rings_directory')
             print(f'    rings_directory = {rd[0]}')
             for d in rd[1:]:
-                print(' '*21+d)
+                print(' '*22+d)
             print('\n[\033[32mEmail\033[0m]')
-            to_addr = config.get("Email", "to_address").split(',')
+            to_addr = get_config("to_address").split(',')
             print(f'    to_address = \033[35m{to_addr[0].split("@")[0]}\033[37m@{to_addr[0].split("@")[1]}\033[0m')
             for addr in to_addr[1:]:
                 print(' '*16 + f'\033[35m{addr.split("@")[0]}\033[37m@{addr.split("@")[1]}\033[0m')
@@ -883,7 +801,7 @@ if __name__ == '__main__':
                     show_all_int(sys.argv[i + 1])
 
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-int':
-                    get_ring_ = get_ring(sys.argv[i + 1])
+                    get_ring_ = get_ring(sys.argv[i + 1], rings_files)
                     if not get_ring_:
                         sys.exit()
                     ring, _, ring_name = get_ring_
@@ -892,7 +810,7 @@ if __name__ == '__main__':
                                    headers=['\nInterface', 'Admin\nStatus', '\nDescription']))
 
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--check-des':
-                    get_ring_ = get_ring(sys.argv[i + 1])
+                    get_ring_ = get_ring(sys.argv[i + 1], rings_files)
                     if not get_ring_:
                         sys.exit()
                     ring, ring_list, ring_name = get_ring_
@@ -904,7 +822,7 @@ if __name__ == '__main__':
                         print('\n\033[31m Проверьте descriptions - Failed!\033[0m')
 
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-ping':
-                    get_ring_ = get_ring(sys.argv[i + 1])
+                    get_ring_ = get_ring(sys.argv[i + 1], rings_files)
                     if not get_ring_:
                         sys.exit()
                     ring, ring_list, ring_name = get_ring_
