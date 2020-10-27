@@ -1,6 +1,6 @@
 
 import pexpect
-from logs import lprint         # Запись логов
+from main.logs import lprint         # Запись логов
 import re
 from re import findall
 import textfsm
@@ -13,14 +13,14 @@ root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
 
 def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool = True):
-    '''
+    """
     Подключаемся к оборудованию по telnet и считываем интерфейсы, их статусы и описание
     Автоматически определяется тип производителя \n
     :param current_ring:            Кольцо
     :param checking_device_name:    Имя оборудования
     :param enable_print:            По умолчанию вывод в консоль включен
     :return:                        Список: интерфейс, статус, описание; False в случае ошибки
-    '''
+    """
     with pexpect.spawn(f"telnet {current_ring[checking_device_name]['ip']}") as telnet:
         try:
             if telnet.expect(["[Uu]ser", 'Unable to connect']):
@@ -197,6 +197,28 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 elif bool(findall(r'Hardware version', version)):
                     if enable_print:
                         lprint("    Edge-Core")
+                    telnet.sendline('show running-config')
+                    output = ''
+                    while True:
+                        match = telnet.expect(['---More---', '#', pexpect.TIMEOUT])
+                        page = str(telnet.before.decode('utf-8'))
+                        output += page.strip()
+                        if match == 0:
+                            telnet.sendline(' ')
+                        elif match == 1:
+                            break
+                        else:
+                            if enable_print:
+                                lprint("    Ошибка: timeout")
+                            break
+                    result = []
+                    intf_raw = findall(r'(interface (.+\n)+?!)', str(output))
+                    for x in intf_raw:
+                        result.append([findall(r'interface (\S*\s*\S*\d)', str(x))[0],
+                                       'admin down' if 'shutdown' in str(x) else 'up',
+                                       findall(r'description (\S+)', str(x))[0] if len(
+                                           findall(r'description (\S+)', str(x))) > 0 else ''])
+                    return result
 
                 # Zyxel
                 elif bool(findall(r'ZyNOS', version)):
@@ -220,7 +242,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                             break
                         elif match == 1:
                             telnet.send(" ")
-                            #output += '\n'
+                            # output += '\n'
                         else:
                             if enable_print:
                                 lprint("    Ошибка: timeout")
@@ -239,7 +261,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
 
 
 def search_admin_down(ring: dict, ring_list: list, checking_device_name: str, enable_print=True):
-    '''
+    """
     Ищет есть ли у данного узла сети порт(ы) в состоянии "admin down" в сторону другого узла сети из этого кольца.
     Проверка осуществляется по наличию в description'е имени узла сети из текущего кольца.
 
@@ -249,7 +271,7 @@ def search_admin_down(ring: dict, ring_list: list, checking_device_name: str, en
     :param enable_print:            Вывод в консоль включен по умолчанию
     :return:    В случае успеха возвращает имя оборудования с портом(ми) "admin down" и имя оборудования к которому
                 ведет этот порт и интерфейс. Если нет портов "admin down", то возвращает "False"
-    '''
+    """
     if enable_print:
         lprint("---- def search_admin_down ----")
 
@@ -261,7 +283,8 @@ def search_admin_down(ring: dict, ring_list: list, checking_device_name: str, en
         for dev_name in ring_list:  # ...перебираем узлы сети в кольце:
             for res_line in result:  # Перебираем все найденные интерфейсы:
                 if bool(findall(dev_name, res_line[2])) and (
-                        bool(findall(r'(admin down|\*down|Down|Disabled|ADM DOWN)', res_line[1]))):
+                        bool(findall(r'(admin down|\*down|Down|Disabled|ADM DOWN)', res_line[1]))
+                ):
                     # ...это хост, к которому закрыт порт от проверяемого коммутатора
                     ad_to_this_host.append(dev_name)
                     ad_interface.append(res_line[0])  # интерфейс со статусом "admin down"
@@ -273,22 +296,22 @@ def search_admin_down(ring: dict, ring_list: list, checking_device_name: str, en
 
 
 def interface_normal_view(interface) -> str:
-    '''
+    """
     Приводит имя интерфейса к виду принятому по умолчанию для коммутаторов\n
     Например: Eth 0/1 -> Ethernet0/1
               GE1/0/12 -> GigabitEthernet1/0/12\n
     :param interface:   Интерфейс в сыром виде (raw)
     :return:            Интерфейс в общепринятом виде
-    '''
+    """
     interface = str(interface)
-    interface_number = findall(r"(\d+([\/\\]?\d*)*)", str(interface))
+    interface_number = findall(r'(\d+([/\\]?\d*)*)', str(interface))
     if bool(findall('^[Ee]', interface)):
         return f"Ethernet{interface_number[0][0]}"
     elif bool(findall('^[Ff]', interface)):
         return f"FastEthernet{interface_number[0][0]}"
     elif bool(findall('^[Gg]', interface)):
         return f"GigabitEthernet{interface_number[0][0]}"
-    elif bool(findall('^\d', interface)):
+    elif bool(findall('^\d+', interface)):
         return findall('^\d+', interface)[0]
     elif bool(findall('^[Tt]', interface)):
         return f'TengigabitEthernet{interface_number[0][0]}'
@@ -297,14 +320,14 @@ def interface_normal_view(interface) -> str:
 
 
 def set_port_status(current_ring: dict, device: str, interface: str, status: str):
-    '''
+    """
     Заходим на оборудование через telnet и устанавливаем состояние конкретного порта
     :param current_ring"    Кольцо
     :param device:          Имя узла сети, с которым необходимо взаимодействовать
     :param interface:       Интерфейс узла сети
     :param status:          "up": поднять порт, "down": положить порт
     :return:                Статус выполнения или ошибки
-    '''
+    """
     lprint("---- def set_port_status ----")
 
     try_to_save = 3     # 3 попытки сохранить
@@ -380,8 +403,8 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             else:
                                 break
                         lprint(f'\n----------------------------------'
-                              f'\n{output}'
-                              f'\n----------------------------------')
+                               f'\n{output}'
+                               f'\n----------------------------------')
                         if 'interface' in output and 'shutdown' in output:
                             lprint(f'    Порт {interface} admin down!')
                             break
@@ -422,8 +445,8 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             else:
                                 break
                         lprint(f'\n----------------------------------'
-                              f'\n{output}'
-                              f'\n----------------------------------')
+                               f'\n{output}'
+                               f'\n----------------------------------')
                         if 'interface' in output and 'shutdown' not in output:    # не в down
                             lprint(f'    Порт {interface} admin up!')
                             break
@@ -512,8 +535,8 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             else:
                                 break
                         lprint(f'\n----------------------------------'
-                              f'\n{output}'
-                              f'\n----------------------------------')
+                               f'\n{output}'
+                               f'\n----------------------------------')
                         if 'interface' in output and 'shutdown' in output:
                             lprint(f'    Порт {interface} admin down!')
                             break
@@ -563,8 +586,8 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             else:
                                 break
                         lprint(f'\n----------------------------------'
-                              f'\n{output}'
-                              f'\n----------------------------------')
+                               f'\n{output}'
+                               f'\n----------------------------------')
                         if 'interface' in output and 'shutdown' not in output:
                             lprint(f'    Порт {interface} admin up!')
                             break
@@ -945,13 +968,13 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
 
 
 def find_port_by_desc(ring: dict, main_name: str, target_name: str):
-    '''
+    """
     Поиск интерфейса с description имеющим в себе имя другого оборудования \n
     :param ring:        Кольцо
     :param main_name:   Узел сети, где ищем
     :param target_name: Узел сети, который ищем
     :return:            Интерфейс
-    '''
+    """
     lprint("---- def find_port_by_desc ----")
     result = interfaces(ring, main_name)
     for line in result:
@@ -960,12 +983,12 @@ def find_port_by_desc(ring: dict, main_name: str, target_name: str):
 
 
 def ping_from_device(device: str, ring: dict):
-    '''
+    """
     Заходим на оборудование через telnet и устанавливаем состояние конкретного порта
     :param ring"    Кольцо
     :param device:          Имя узла сети, с которым необходимо взаимодействовать
     :return:                В случае успеха возвращает 1, неудачи - 0
-    '''
+    """
     with pexpect.spawn(f"telnet {ring[device]['ip']}") as telnet:
         try:
             if telnet.expect(["[Uu]ser", 'Unable to connect']):
@@ -1008,7 +1031,7 @@ def ping_from_device(device: str, ring: dict):
                             match = telnet.expect(['Request timed out', 'Command: ping', 'Reply from'])
                         # Alcatel, Linksys
                         elif bool(findall(r'SW version', version)):
-                            match = telnet.expect([' 0 packets received','Host not found', 'min/avg/max'])
+                            match = telnet.expect([' 0 packets received', 'Host not found', 'min/avg/max'])
                         # Eltex
                         elif bool(findall(r'Active-image: ', version)):
                             match = telnet.expect(['PING: timeout', 'Host not found', 'bytes from'])
@@ -1056,11 +1079,11 @@ def ping_from_device(device: str, ring: dict):
 
 
 def ping_devices(ring: dict):
-    '''
+    """
     Функция определяет, какие из узлов сети в кольце доступны по "ping" \n
     :param ring: Кольцо
     :return: Двумерный список: имя узла и его статус "True" - ping успешен, "False" - нет
-    '''
+    """
     status = []
     lprint("---- def ring_ping_status ----")
 

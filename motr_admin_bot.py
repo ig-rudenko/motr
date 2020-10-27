@@ -1,9 +1,9 @@
 import requests
-import motr
 import sys
 import os
 import yaml
 import configparser
+from main.config import get_config
 
 
 class MotrAdminBot:
@@ -16,7 +16,10 @@ class MotrAdminBot:
         method = 'getUpdates'
         params = {'timeout': timeout, 'offset': offset}
         resp = requests.get(self.api_url + method, params)
-        result_json = resp.json()['result']
+        if resp:
+            result_json = resp.json()['result']
+        else:
+            result_json = resp
         return result_json
 
     def send_message(self, chat_id: str, text: str):
@@ -40,10 +43,9 @@ root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 email_notification = 'enable'
 
 if __name__ == '__main__':
+    import motr
     new_offset = None
     bot = MotrAdminBot('1286361113:AAESrIDgYNC-CtBXrNwwejbBuc4OOcX2-0M')
-
-    rings_files = motr.get_config('rings_files')
 
     while True:
         bot.get_updates(new_offset)
@@ -84,7 +86,7 @@ if __name__ == '__main__':
             if key == '/stat':
                 rings_count = 0
                 devices_count = 0
-                rings_files = motr.get_config('rings_files')
+                rings_files = get_config('rings_directory')
                 for file in rings_files:
                     with open(file, 'r') as ff:
                         rings = yaml.safe_load(ff)  # Перевод из yaml в словарь
@@ -96,7 +98,7 @@ if __name__ == '__main__':
                 output = f"total rings count: {rings_count}\ntotal devices count: {devices_count}"
                 bot.send_message(chat_id, output)
 
-            if key == '/config':
+            if key == '/conf':
                 output = f'*Файл конфигурации*:\n{root_dir}/config.conf\n'
                 config = configparser.ConfigParser()
                 config.read(f'{root_dir}/config.conf')

@@ -8,18 +8,20 @@ import sys
 import os
 from datetime import datetime
 import time
-import email_notifications as email     # Отправка Email
-from logs import lprint                 # Запись логов
-from tabulate import tabulate
-from device_control import interfaces, search_admin_down, set_port_status, find_port_by_desc
-from device_control import ping_devices, ping_from_device
-from config import get_config, set_default_config
+from main import email_notifications as email   # Email оповещения
+from main.logs import lprint                    # Запись логов
+from main.tabulate import tabulate
+from main.device_control import interfaces, search_admin_down, set_port_status, find_port_by_desc
+from main.device_control import ping_devices, ping_from_device
+from main.config import get_config, set_default_config
+from main.tg_bot_notification import tg_bot_send    # Оповещения телеграм
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 global email_notification
 
+
 def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str):
-    '''
+    """
     На основе двух узлов сети определяется тип "поворота" кольца относительно его структуры описанной в файле
         Positive - так как в списке \n
         Negative - обратный порядок \n
@@ -27,7 +29,7 @@ def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str)
     :param main_dev:        Узел сети с "admin down"
     :param neighbour_dev:   Узел сети, к которому ведет порт со статусом "admin down" узла сети 'main_dev'
     :return: positive, negative, False
-    '''
+    """
     main_dev_index = current_ring_list.index(main_dev)
     if current_ring_list[main_dev_index-1] == neighbour_dev:
         return "positive"
@@ -38,13 +40,13 @@ def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str)
 
 
 def get_ring(device_name: str, rings_files: list) -> tuple:
-    '''
+    """
     Функция для поиска кольца, к которому относится переданный узел сети \n
     :param device_name: Уникальное имя узла сети
     :return: 1 Кольцо (dict),
              2 Узлы сети в кольце (list)
              3 Имя кольца (str)
-    '''
+    """
     for file in rings_files:
         with open(file, 'r') as rings_yaml:      # Чтение файла
             rings = yaml.safe_load(rings_yaml)      # Перевод из yaml в словарь
@@ -66,6 +68,52 @@ def delete_ring_from_deploying_list(ring_name: str):
         del rotated_rings[ring_name]
     with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
         yaml.dump(rotated_rings, save_ring, default_flow_style=False)  # Переписываем файл
+
+
+def convert_result_to_str(ring_name: str, current_ring_list: list, old_devices_ping: list, new_devices_ping: list,
+                          admin_down_host: str, admin_down_port: str, admin_down_to: str, up_host: str, up_port: str,
+                          up_to: str, info: str = '') -> tuple:
+    '''
+                        Преобразование переменных в читаемый формат
+    :param ring_name:           Имя кольца
+    :param current_ring_list:   Кольцо
+    :param old_devices_ping:    Состояние узлов сети в кольце до разворота
+    :param new_devices_ping:    Состояние узлов сети в кольце после разворота
+    :param admin_down_host:     Узел сети со статусом "admin down"
+    :param admin_down_port:     Порт узла сети со статусом "admin down"
+    :param admin_down_to:       Узел сети, к которому ведет порт со статусом "admin down"
+    :param up_host:             Узел сети, который имел статус "admin down" и был поднят
+    :param up_port:             Порт узла сети, который имел статус "admin down" и был поднят
+    :param up_to:               Узел сети, к которому ведет порт узла сети, который имел статус "admin down" и был поднят
+    :param info:                Дополнительная информация
+    :return:
+    '''
+
+    stat = ['', '']
+    dev_stat = [old_devices_ping, new_devices_ping]
+    for position, _ in enumerate(dev_stat):
+        for device in current_ring_list:
+            for dev_name, status in dev_stat[position]:
+                if device == dev_name and not bool(findall('SSW', device)):
+                    if status:
+                        stat[position] += ' ' * 10 + f'доступно   {device}\n'
+                    else:
+                        stat[position] += ' ' * 10 + f'недоступно {device}\n'
+
+    subject = f'{ring_name} Автоматический разворот кольца FTTB'
+
+    if stat[0] == stat[1]:
+        info += '\nНичего не поменялось, знаю, но так надо :)'
+
+    text = f'Состояние кольца до разворота: \n {stat[0]}'\
+           f'\nДействия: '\
+           f'\n1)  На {admin_down_host} порт {admin_down_port} - "admin down" '\
+           f'в сторону узла {admin_down_to}\n'\
+           f'2)  На {up_host} порт {up_port} - "up" '\
+           f'в сторону узла {up_to}\n'\
+           f'\nСостояние кольца после разворота: \n {stat[1]} \n'\
+           f'{info}'
+    return subject, text
 
 
 def main(devices_ping: list, current_ring: dict, current_ring_list: list, current_ring_name: str,
@@ -145,11 +193,13 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 else:
                                     status_before += ' ' * 10 + f'недоступно {device}\n'
 
+                    text = f'Состояние кольца до разворота: \n {status_before}'\
+                           f'\nБудут выполнены следующие действия:'\
+                           f'\nЗакрываем порт {successor_intf} на {successor_name}'\
+                           f'\nПоднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}'
                     email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
-                                    text=f'Состояние кольца до разворота: \n {status_before}'
-                                         f'\nБудут выполнены следующие действия:'
-                                         f'\nЗакрываем порт {successor_intf} на {successor_name}'
-                                         f'\nПоднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}')
+                                    text=text)
+                    tg_bot_send(f'Начинаю разворот кольца {current_ring_name}\n\n{text}')
 
                     # -----------------------------Закрываем порт на преемнике------------------------------------------
                     try_to_set_port = 2
@@ -168,28 +218,42 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                         break
 
                     # ---------------------------Если порт на преемнике НЕ закрыли--------------------------------------
+
+                    # telnet недоступен
                     if operation_port_down == 'telnet недоступен':
+                        text = f'Не удалось подключиться к {successor_name} по telnet!'\
+                               f'({current_ring[successor_name]["ip"]})'
                         email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                        text=f'Не удалось подключиться к {successor_name} по telnet!'
-                                             f'({current_ring[successor_name]["ip"]})')
+                                        text=text)
+                        tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
 
+                    # неверный логин или пароль
                     elif operation_port_down == 'неверный логин или пароль':
+                        text = f'Не удалось зайти на оборудование {successor_name}'\
+                               f'({current_ring[successor_name]["ip"]}) {operation_port_down}'
                         email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                        text=f'Не удалось зайти на оборудование {successor_name}'
-                                             f'({current_ring[successor_name]["ip"]}) {operation_port_down}')
+                                        text=text)
+                        tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
 
+                    # cant set down
                     elif operation_port_down == 'cant set down':
+                        text = f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'\
+                               f'не удалось закрыть порт {successor_intf}!'
                         email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                        text=f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
-                                             f'не удалось закрыть порт {successor_intf}!')
+                                        text=text)
+                        tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
 
+                    # cant status
                     elif operation_port_down == 'cant status':
+                        text = f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'\
+                               f'была послана команда закрыть порт {successor_intf}, но '\
+                               f'не удалось распознать интерфейсы для проверки его состояния(см. логи)\n'\
+                               f'Отправлена команда на возврат порта в прежнее состояние (up)'
                         email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                        text=f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
-                                             f'была послана команда закрыть порт {successor_intf}, но '
-                                             f'не удалось распознать интерфейсы для проверки его состояния(см. логи)\n'
-                                             f'Отправлена команда на возврат порта в прежнее состояние (up)')
+                                        text=text)
+                        tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
 
+                    # DONT SAVE
                     elif 'DONT SAVE' in operation_port_down:
                         # открываем порт
                         try_to_set_port = 2
@@ -207,31 +271,40 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 continue
                             break
                         if operation_port_up == 'DONE' or 'DONT SAVE' in operation_port_up:
+                            text = f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'\
+                                   f'после закрытия порта {successor_intf} не удалось сохранить '\
+                                   f'конфигурацию!\nВернул порт в исходное состояние (up)\n'\
+                                   f'Разворот кольца прерван'
                             email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                            text=f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
-                                                 f'после закрытия порта {successor_intf} не удалось сохранить '
-                                                 f'конфигурацию!\nВернул порт в исходное состояние (up)\n'
-                                                 f'Разворот кольца прерван')
+                                            text=text)
+                            tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
                         else:
+                            text = f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'\
+                                   f'после закрытия порта {successor_intf} не удалось сохранить '\
+                                   f'конфигурацию!\nПопытка поднять порт обратно закончилась неудачей: '\
+                                   f'{operation_port_up}.\n'\
+                                   f'Разворот кольца прерван'
                             email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                            text=f'На оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
-                                                 f'после закрытия порта {successor_intf} не удалось сохранить '
-                                                 f'конфигурацию!\nПопытка поднять порт обратно закончилась неудачей: '
-                                                 f'{operation_port_up}.\n'
-                                                 f'Разворот кольца прерван')
+                                            text=text)
+                            tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
+
                         delete_ring_from_deploying_list(current_ring_name)
                         sys.exit()
                         # Выход
 
                     elif operation_port_down == 'Exception: cant set port status':
+                        text = f'Возникло прерывание в момент закрытия порта {successor_intf} '\
+                               f'на оборудовании {successor_name} ({current_ring[successor_name]["ip"]})'
                         email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                        text=f'Возникло прерывание в момент закрытия порта {successor_intf} '
-                                             f'на оборудовании {successor_name} ({current_ring[successor_name]["ip"]})')
+                                        text=text)
+                        tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
 
                     elif 'Exception' in operation_port_down:
+                        text = f'Возникло прерывание после подключения к оборудованию '\
+                               f'{successor_name} ({current_ring[successor_name]["ip"]})'
                         email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                        text=f'Возникло прерывание после подключения к оборудованию '
-                                             f'{successor_name} ({current_ring[successor_name]["ip"]})')
+                                        text=text)
+                        tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
 
                     # ------------------------------------Если порт закрыли---------------------------------------------
                     elif operation_port_down == 'DONE':
@@ -252,49 +325,57 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                                                    interface=successor_intf,
                                                                    status="up")
                             if operation_port_reset == 'DONE':
+                                text = f'Были приняты попытки развернуть кольцо {current_ring_name}\n'\
+                                       f'В процессе выполнения был установлен статус порта '\
+                                       f'{successor_intf} у {successor_name} "admin down", '\
+                                       f'а затем возникла ошибка: {operation_port_up} на узле '\
+                                       f'{admin_down["device"]} в попытке поднять порт '\
+                                       f'{admin_down["interface"][0]}\nДалее порт {successor_intf} '\
+                                       f'на {successor_name} был возвращен в исходное состояние (up)'
                                 email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                                text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
-                                                     f'В процессе выполнения был установлен статус порта '
-                                                     f'{successor_intf} у {successor_name} "admin down", '
-                                                     f'а затем возникла ошибка: {operation_port_up} на узле '
-                                                     f'{admin_down["device"]} в попытке поднять порт '
-                                                     f'{admin_down["interface"][0]}\nДалее порт {successor_intf} '
-                                                     f'на {successor_name} был возвращен в исходное состояние (up)')
+                                                text=text)
+                                tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
                             # Если проблема возникла до стадии сохранения
                             elif 'SAVE' not in operation_port_reset:
+                                text = f'Были приняты попытки развернуть кольцо {current_ring_name}\n'\
+                                       f'В процессе выполнения был установлен статус порта '\
+                                       f'{successor_intf} у {successor_name} "admin down", '\
+                                       f'а затем возникла ошибка: {operation_port_up} на узле '\
+                                       f'{admin_down["device"]} в попытке поднять порт '\
+                                       f'{admin_down["interface"][0]}\nДалее возникла ошибка в процессе '\
+                                       f'возврата порта {successor_intf} на {successor_name} в '\
+                                       f'исходное состояние (up) \nError: {operation_port_reset}'
                                 email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                                text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
-                                                     f'В процессе выполнения был установлен статус порта '
-                                                     f'{successor_intf} у {successor_name} "admin down", '
-                                                     f'а затем возникла ошибка: {operation_port_up} на узле '
-                                                     f'{admin_down["device"]} в попытке поднять порт '
-                                                     f'{admin_down["interface"][0]}\nДалее возникла ошибка в процессе '
-                                                     f'возврата порта {successor_intf} на {successor_name} в '
-                                                     f'исходное состояние (up) \nError: {operation_port_reset}')
+                                                text=text)
+                                tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
                             # Если проблема возникла на стадии сохранения
                             elif 'SAVE' in operation_port_reset:
+                                text = f'Были приняты попытки развернуть кольцо {current_ring_name}\n'\
+                                       f'В процессе выполнения был установлен статус порта '\
+                                       f'{successor_intf} у {successor_name} "admin down", '\
+                                       f'а затем возникла ошибка: {operation_port_up} на узле '\
+                                       f'{admin_down["device"]} в попытке поднять порт '\
+                                       f'{admin_down["interface"][0]}\nДалее порт {successor_intf} '\
+                                       f'на {successor_name} был возвращен в исходное состояние (up), '\
+                                       f'но на стадии сохранения возникла ошибка: {operation_port_reset}'\
+                                       f'\nПроверьте и сохраните конфигурацию!'
                                 email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                                text=f'Были приняты попытки развернуть кольцо {current_ring_name}\n'
-                                                     f'В процессе выполнения был установлен статус порта '
-                                                     f'{successor_intf} у {successor_name} "admin down", '
-                                                     f'а затем возникла ошибка: {operation_port_up} на узле '
-                                                     f'{admin_down["device"]} в попытке поднять порт '
-                                                     f'{admin_down["interface"][0]}\nДалее порт {successor_intf} '
-                                                     f'на {successor_name} был возвращен в исходное состояние (up), '
-                                                     f'но на стадии сохранения возникла ошибка: {operation_port_reset}'
-                                                     f'\nПроверьте и сохраните конфигурацию!')
+                                                text=text)
+                                tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
                             delete_ring_from_deploying_list(current_ring_name)
                             sys.exit()
 
                         # Если проблема возникла во время стадии сохранения
                         elif 'SAVE' in operation_port_up:
+                            text = f'Развернуто кольцо'\
+                                   f'\nДействия: '\
+                                   f'\n1)  На {successor_name} порт {successor_intf} - "admin down" '\
+                                   f'в сторону узла {successor_to}\n'\
+                                   f'2)  На {admin_down["device"]} порт {admin_down["interface"]} '\
+                                   f'- "up" в сторону узла {admin_down["next_device"]}\n'
                             email.send_text(subject=f'{current_ring_name} Автоматический разворот кольца FTTB',
-                                            text=f'Развернуто кольцо'
-                                                 f'\nДействия: '
-                                                 f'\n1)  На {successor_name} порт {successor_intf} - "admin down" '
-                                                 f'в сторону узла {successor_to}\n'
-                                                 f'2)  На {admin_down["device"]} порт {admin_down["interface"]} '
-                                                 f'- "up" в сторону узла {admin_down["next_device"]}\n')
+                                            text=text)
+                            tg_bot_send(f'{current_ring_name} Автоматический разворот кольца FTTB\n\n{text}')
                             delete_ring_from_deploying_list(current_ring_name)
                             sys.exit()
 
@@ -335,10 +416,14 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
                                     yaml.dump(ring_to_save, save_ring, default_flow_style=False)
                                 # Отправка e-mail
-                                email.send(current_ring_name, current_ring_list, devices_ping, new_ping_status,
-                                           successor_name, successor_intf, successor_to,
-                                           admin_down['device'], admin_down['interface'][0],
-                                           admin_down['next_device'][0])
+                                sub, text = convert_result_to_str(current_ring_name, current_ring_list, devices_ping,
+                                                                  new_ping_status,
+                                                                  successor_name, successor_intf, successor_to,
+                                                                  admin_down['device'], admin_down['interface'][0],
+                                                                  admin_down['next_device'][0])
+                                # email.send()
+                                email.send_text(subject=sub, text=text)
+                                tg_bot_send(f'{sub}\n\n{text}')
                                 lprint("Отправлено письмо!")
                                 sys.exit()
 
@@ -362,17 +447,19 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 info = f'Возможен обрыв кабеля между {successor_name} и ' \
                                        f'{double_current_ring_list[current_ring_list.index(successor_name) + i]}\n'
 
-                                email.send(ring_name=current_ring_name,
-                                           current_ring_list=current_ring_list,
-                                           old_devices_ping=devices_ping,
-                                           new_devices_ping=new_ping_status,
-                                           admin_down_host=successor_name,
-                                           admin_down_port=successor_intf,
-                                           admin_down_to=successor_to,
-                                           up_host=admin_down['device'],
-                                           up_port=admin_down['interface'][0],
-                                           up_to=admin_down['next_device'][0],
-                                           info=info)
+                                sub, text = convert_result_to_str(ring_name=current_ring_name,
+                                                                  current_ring_list=current_ring_list,
+                                                                  old_devices_ping=devices_ping,
+                                                                  new_devices_ping=new_ping_status,
+                                                                  admin_down_host=successor_name,
+                                                                  admin_down_port=successor_intf,
+                                                                  admin_down_to=successor_to,
+                                                                  up_host=admin_down['device'],
+                                                                  up_port=admin_down['interface'][0],
+                                                                  up_to=admin_down['next_device'][0],
+                                                                  info=info)
+                                email.send_text(subject=sub, text=text)
+                                tg_bot_send(f'{sub}\n\n{text}')
                                 lprint("Отправлено письмо!")
                                 sys.exit()
 
@@ -470,12 +557,15 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                             lprint(f"Все узлы в кольце доступны, разворот не потребовался!\n"
                                                   f"Узел {admin_down['device']}, состояние порта {admin_down['interface'][0]}: "
                                                   f"admin down в сторону узла {admin_down['next_device'][0]}")
+                                            text = f"Все узлы в кольце доступны, разворот не потребовался!\n"\
+                                                   f"Узел {admin_down['device']}, состояние порта "\
+                                                   f"{admin_down['interface'][0]}: admin down в сторону "\
+                                                   f"узла {admin_down['next_device'][0]}"
                                             email.send_text(subject=f'{current_ring_name} Автоматический разворот '
                                                                     f'кольца FTTB',
-                                                            text=f"Все узлы в кольце доступны, разворот не потребовался!\n"
-                                                                 f"Узел {admin_down['device']}, состояние порта "
-                                                                 f"{admin_down['interface'][0]}: admin down в сторону "
-                                                                 f"узла {admin_down['next_device'][0]}")
+                                                            text=text)
+                                            tg_bot_send(f'{current_ring_name} Автоматический разворот кольца FTTB\n\n'
+                                                        f'{text}')
                                             delete_ring_from_deploying_list(current_ring_name)
                                             sys.exit()
                                             # Выход
@@ -552,24 +642,28 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                             with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
                                 yaml.dump(ring_to_save, save_ring, default_flow_style=False)
                             # Отправка e-mail
-                            email.send(ring_name=current_ring_name,
-                                       current_ring_list=current_ring_list,
-                                       old_devices_ping=devices_ping,
-                                       new_devices_ping=new_ping_status,
-                                       admin_down_host=successor_name,
-                                       admin_down_port=successor_intf,
-                                       admin_down_to=successor_to,
-                                       up_host=admin_down['device'],
-                                       up_port=admin_down['interface'][0],
-                                       up_to=admin_down['next_device'][0],
-                                       info=info)
+                            sub, text = convert_result_to_str(ring_name=current_ring_name,
+                                                              current_ring_list=current_ring_list,
+                                                              old_devices_ping=devices_ping,
+                                                              new_devices_ping=new_ping_status,
+                                                              admin_down_host=successor_name,
+                                                              admin_down_port=successor_intf,
+                                                              admin_down_to=successor_to,
+                                                              up_host=admin_down['device'],
+                                                              up_port=admin_down['interface'][0],
+                                                              up_to=admin_down['next_device'][0],
+                                                              info=info)
+                            email.send_text(subject=sub, text=text)
+                            tg_bot_send(f'{sub}\n\n{text}')
                             lprint("Отправлено письмо!")
                             sys.exit()
 
                     else:
+                        text = f'Возникло что-то невозможное во время работы с оборудованием '\
+                               f'{successor_name}! ({current_ring[successor_name]["ip"]}) 😵'
                         email.send_text(subject=f'Прерван разворот кольца {current_ring_name}',
-                                        text=f'Возникло что-то невозможное во время работы с оборудованием '
-                                             f'{successor_name}! ({current_ring[successor_name]["ip"]}) 😵')
+                                        text=text)
+                        tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
                     delete_ring_from_deploying_list(current_ring_name)
                     # Выход
 
@@ -623,11 +717,11 @@ def start(dev: str):
 
 
 def time_sleep(sec: int) -> None:
-    '''
+    """
     Пауза с выводом вертикальной линии в одну строку, равную количеству секунд ожидания \n
     :param sec: время в секундах
     :return: None
-    '''
+    """
     for s in range(sec):
         print('|', end='', flush=True)
         time.sleep(1)
@@ -742,7 +836,7 @@ if __name__ == '__main__':
     rings_files = get_config('rings_directory')
     email_notification = get_config('email_notification')
 
-    from validation import validation  # Проверка файлов колец на валидность
+    from main.validation import validation  # Проверка файлов колец на валидность
 
     for i, key in enumerate(sys.argv):
         if key == '-h' or key == '--help':

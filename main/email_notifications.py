@@ -6,7 +6,7 @@ from re import findall
 import configparser
 import os
 import sys
-from config import set_default_config, get_config
+from main.config import set_default_config, get_config
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 
@@ -50,53 +50,6 @@ def send_text(subject: str, text: str):
                             to_addrs=to_addresses,
                             msg=message.as_string())
             server.quit()
-
-
-def send(ring_name: str, current_ring_list: list, old_devices_ping: list, new_devices_ping: list,
-         admin_down_host: str, admin_down_port: str, admin_down_to: str, up_host: str, up_port: str,
-         up_to: str, info: str = ''):
-    '''
-                        Отправка e-mail \n
-    :param ring_name:           Имя кольца
-    :param current_ring_list:   Кольцо
-    :param old_devices_ping:    Состояние узлов сети в кольце до разворота
-    :param new_devices_ping:    Состояние узлов сети в кольце после разворота
-    :param admin_down_host:     Узел сети со статусом "admin down"
-    :param admin_down_port:     Порт узла сети со статусом "admin down"
-    :param admin_down_to:       Узел сети, к которому ведет порт со статусом "admin down"
-    :param up_host:             Узел сети, который имел статус "admin down" и был поднят
-    :param up_port:             Порт узла сети, который имел статус "admin down" и был поднят
-    :param up_to:               Узел сети, к которому ведет порт узла сети, который имел статус "admin down" и был поднят
-    :param info:                Дополнительная информация
-    :return:
-    '''
-
-    stat = ['', '']
-    dev_stat = [old_devices_ping, new_devices_ping]
-    for position, _ in enumerate(dev_stat):
-        for device in current_ring_list:
-            for dev_name, status in dev_stat[position]:
-                if device == dev_name and not bool(findall('SSW', device)):
-                    if status:
-                        stat[position] += ' ' * 10 + f'доступно   {device}\n'
-                    else:
-                        stat[position] += ' ' * 10 + f'недоступно {device}\n'
-
-    subject = f'{ring_name} Автоматический разворот кольца FTTB'
-
-    if stat[0] == stat[1]:
-        info += '\nНичего не поменялось, знаю, но так надо :)'
-
-    text = f'Состояние кольца до разворота: \n {stat[0]}'\
-           f'\nДействия: '\
-           f'\n1)  На {admin_down_host} порт {admin_down_port} - "admin down" '\
-           f'в сторону узла {admin_down_to}\n'\
-           f'2)  На {up_host} порт {up_port} - "up" '\
-           f'в сторону узла {up_to}\n'\
-           f'\nСостояние кольца после разворота: \n {stat[1]} \n'\
-           f'{info}'
-
-    send_text(subject=subject, text=text)
 
 
 if __name__ == '__main__':

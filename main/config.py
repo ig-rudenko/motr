@@ -21,6 +21,7 @@ def get_config(conf: str = None):
     config = configparser.ConfigParser()
     config.read(f'{root_dir}/config.conf')
     email_notification = 'enable' if config.get("Settings", 'email_notification') == 'enable' else 'disable'
+    tg_bot_notification = 'enable' if config.get("Settings", 'tg_bot_notification') == 'enable' else 'disable'
     rings_files = get_rings()
 
     if conf == 'rings_directory':
@@ -29,6 +30,12 @@ def get_config(conf: str = None):
         return email_notification
     elif conf == 'to_address':
         return config.get("Email", 'to_address')
+    elif conf == 'tg_bot_notification':
+        return tg_bot_notification
+    elif conf == 'TG_bot_token':
+        return config.get("TG_bot", 'token')
+    elif conf == 'TG_bot_chat_id':
+        return config.get("TG_bot", 'chat_id')
     else:
         return None
 
@@ -37,6 +44,7 @@ def set_default_config() -> None:
     cfg = configparser.ConfigParser()
     cfg.add_section('Settings')
     cfg.set("Settings", 'email_notification', 'enable')
+    cfg.set("Settings", 'tg_bot_notification', 'enable')
     cfg.set("Settings", 'rings_directory', '~rings/*')
     cfg.add_section('Email')
     cfg.set("Email", 'to_address', 'irudenko@sevtelecom.ru, '
@@ -47,7 +55,10 @@ def set_default_config() -> None:
                                    'adoronenkov@sevtelecom.ru, '
                                    'epopova@sevtelecom.ru, '
                                    'vtihonova@sevtelecom.ru')
-    with open('config.conf', 'w') as cfg_file:
+    cfg.add_section('TG_bot')
+    cfg.set("TG_bot", 'token', '')
+    cfg.set("TG_bot", 'chat_id', '')
+    with open('../config.conf', 'w') as cfg_file:
         cfg.write(cfg_file)
 
 

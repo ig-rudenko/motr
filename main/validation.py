@@ -1,8 +1,8 @@
 import yaml
 from re import findall
-import email_notifications as email
+from main import email_notifications as email
 from motr import root_dir  # Импорт глобальной переменной
-from logs import lprint
+from main.logs import lprint
 import os
 
 
