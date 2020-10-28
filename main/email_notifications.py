@@ -2,7 +2,6 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
-from re import findall
 import configparser
 import os
 import sys
@@ -14,7 +13,6 @@ root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 def to_address() -> list:
     if not os.path.exists(f'{root_dir}/config.conf'):
         set_default_config()
-    get_config('')
     config = configparser.ConfigParser()
     config.read(f'{root_dir}/config.conf')
     to_addr = config.get("Email", 'to_address').split(',')
@@ -27,10 +25,8 @@ def to_address() -> list:
 def send_text(subject: str, text: str):
     if not os.path.exists(f'{root_dir}/config.conf'):
         set_default_config()
-    config = configparser.ConfigParser()
-    config.read(f'{root_dir}/config.conf')
 
-    if config.get("Settings", 'email_notification') == 'enable':    # Если включены email оповещения
+    if get_config("email_notification") == 'enable':    # Если включены email оповещения
 
         host = 'mail.sevtelecom.ru'
         server_login = 'irudenko'
@@ -83,5 +79,7 @@ if __name__ == '__main__':
     up_port = 'GigibitEthernet0/0/2'
     up_to = 'SVSL-01-MotR-ASW3'
 
-    send(ring_name, current_ring_list, devices_ping, new_devices_ping, admin_down_host, admin_down_port, admin_down_to,
-         up_host, up_port, up_to, info)
+    # send(ring_name, current_ring_list, devices_ping, new_devices_ping, admin_down_host, admin_down_port, admin_down_to,
+    #      up_host, up_port, up_to, info)
+
+    send_text(subject='Тестовое письмо', text='Привет :)')

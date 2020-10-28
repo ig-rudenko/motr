@@ -3,7 +3,7 @@ import sys
 import os
 import yaml
 import configparser
-from main.config import get_config
+from main.config import get_config, set_default_config
 
 
 class MotrAdminBot:
@@ -95,15 +95,17 @@ if __name__ == '__main__':
                     for r in rings:
                         devrc += len(rings[r])
                     devices_count += devrc
-                output = f"total rings count: {rings_count}\ntotal devices count: {devices_count}"
+                output = f"Всего колец заведено: {rings_count}\nОбщее кол-во устройств во всех кольцах: {devices_count}"
                 bot.send_message(chat_id, output)
 
             if key == '/conf':
                 output = f'*Файл конфигурации*:\n{root_dir}/config.conf\n'
-                config = configparser.ConfigParser()
-                config.read(f'{root_dir}/config.conf')
-                output += f'email\_notification = {config.get("Settings", "email_notification")}\n'
-                output += f'rings\_directory = {config.get("Settings", "rings_directory")}'
+                if not os.path.exists(f'{root_dir}/config.conf'):
+                    set_default_config()
+
+                output += f'email\_notification = {get_config("email_notification")}\n'
+                output += f'tg\_bot\_notification = {get_config("tg_bot_notification")}\n'
+                output += f'rings\_directory = {get_config("rings_directory")}\n'
                 bot.send_message(chat_id, output)
 
             if key == '/motr':

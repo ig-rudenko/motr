@@ -15,6 +15,7 @@ from main.device_control import interfaces, search_admin_down, set_port_status, 
 from main.device_control import ping_devices, ping_from_device
 from main.config import get_config, set_default_config
 from main.tg_bot_notification import tg_bot_send    # Оповещения телеграм
+import subprocess
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 global email_notification
@@ -193,13 +194,14 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 else:
                                     status_before += ' ' * 10 + f'недоступно {device}\n'
 
-                    text = f'Состояние кольца до разворота: \n {status_before}'\
-                           f'\nБудут выполнены следующие действия:'\
-                           f'\nЗакрываем порт {successor_intf} на {successor_name}'\
-                           f'\nПоднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}'
-                    email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
-                                    text=text)
-                    tg_bot_send(f'Начинаю разворот кольца {current_ring_name}\n\n{text}')
+                    if not this_is_the_second_loop:
+                        text = f'Состояние кольца до разворота: \n {status_before}'\
+                               f'\nБудут выполнены следующие действия:'\
+                               f'\nЗакрываем порт {successor_intf} на {successor_name}'\
+                               f'\nПоднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}'
+                        email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
+                                        text=text)
+                        tg_bot_send(f'Начинаю разворот кольца {current_ring_name}\n\n{text}')
 
                     # -----------------------------Закрываем порт на преемнике------------------------------------------
                     try_to_set_port = 2
@@ -921,6 +923,20 @@ if __name__ == '__main__':
                         sys.exit()
                     ring, ring_list, ring_name = get_ring_
                     ping_devices(ring)
+
+                elif len(sys.argv) > i+2 and sys.argv[i+2] == '--hide-mode=enable':
+                    subprocess.Popen(['./motr.py', '-D', sys.argv[i+1]],
+                                     close_fds=True,
+                                     stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
+                elif len(sys.argv) > i+2 and sys.argv[i+2] == '--reset':
+                    if len(sys.argv) > i+3 and sys.argv[i+3] == '--hide-mode=enable':
+                        subprocess.Popen(['./reset_ring.py', '-D', sys.argv[i + 1]],
+                                         close_fds=True,
+                                         stdout=subprocess.DEVNULL,
+                                         stderr=subprocess.DEVNULL)
+                    else:
+                        subprocess.run(['./reset_ring.py', '-D', sys.argv[i + 1]])
 
                 else:
                     start(sys.argv[i+1])
