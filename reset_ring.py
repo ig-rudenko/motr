@@ -93,7 +93,7 @@ if __name__ == '__main__':
                     sys.exit()
                 rotated_rings[current_ring_name]["default_host"] = new_default_status['default_host']
                 rotated_rings[current_ring_name]["default_port"] = new_default_status['default_port']
-                rotated_rings[current_ring_name]["admin_down_to"] = new_default_status['admin_down_to']
+                rotated_rings[current_ring_name]["admin_down_to"] = new_default_status['default_to']
 
             else:
                 for device_name, device_status in devices_ping:

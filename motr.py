@@ -95,24 +95,68 @@ def convert_result_to_str(ring_name: str, current_ring_list: list, old_devices_p
     for position, _ in enumerate(dev_stat):
         for device in current_ring_list:
             for dev_name, status in dev_stat[position]:
-                if device == dev_name and not bool(findall('SSW', device)):
+                if device == dev_name and dev_name != current_ring_list[0]:
                     if status:
-                        stat[position] += ' ' * 10 + f'✅ {device}\n'
+                        stat[position] += ' ' * 5 + f'✅ {device}\n'
                     else:
-                        stat[position] += ' ' * 10 + f'❌ {device}\n'
+                        stat[position] += ' ' * 5 + f'❌ {device}\n'
+
+    # До разворота
+    if up_to == current_ring_list[current_ring_list.index(up_host) - 1]:
+        position_ad = 'up'
+    elif up_to == current_ring_list[current_ring_list.index(up_host) + 1]:
+        position_ad = 'down'
+    else:
+        position_ad = None
+    if position_ad == 'up':
+        if up_host == current_ring_list[0]:
+            stat[0] = f'\n({current_ring_list[0]})\n{stat[0]}({current_ring_list[0]})▲\n'
+        else:
+            stat[0] = f'\n({current_ring_list[0]})\n' \
+                      f'{stat[0].replace(up_host, f"{up_host}▲")}' \
+                      f'({current_ring_list[0]})\n'
+    elif position_ad == 'down':
+        if up_host == current_ring_list[0]:
+            stat[0] = f'\n({current_ring_list[0]})▼\n{stat[1]}({current_ring_list[0]})\n'
+        else:
+            stat[0] = f'\n({current_ring_list[0]})\n' \
+                      f'{stat[0].replace(up_host, f"{up_host}▼")}' \
+                      f'({current_ring_list[0]})\n'
+
+    # После разворота
+    if admin_down_to == current_ring_list[current_ring_list.index(admin_down_host) - 1]:
+        position_ad = 'up'
+    elif admin_down_to == current_ring_list[current_ring_list.index(admin_down_host) + 1]:
+        position_ad = 'down'
+    else:
+        position_ad = None
+    if position_ad == 'up':
+        if admin_down_host == current_ring_list[0]:
+            stat[1] = f'\n({current_ring_list[0]})\n{stat[1]}({current_ring_list[0]})▲\n'
+        else:
+            stat[1] = f'\n({current_ring_list[0]})\n' \
+                      f'{stat[1].replace(admin_down_host, f"{admin_down_host}▲")}' \
+                      f'({current_ring_list[0]})\n'
+    elif position_ad == 'down':
+        if admin_down_host == current_ring_list[0]:
+            stat[1] = f'\n({current_ring_list[0]})▼\n{stat[1]}({current_ring_list[0]})\n'
+        else:
+            stat[1] = f'\n({current_ring_list[0]})\n' \
+                      f'{stat[1].replace(admin_down_host, f"{admin_down_host}▼")}' \
+                      f'({current_ring_list[0]})\n'
 
     subject = f'{ring_name} Автоматический разворот кольца FTTB'
 
     if stat[0] == stat[1]:
         info += '\nНичего не поменялось, знаю, но так надо :)'
 
-    text = f'Состояние кольца до разворота: \n {stat[0]}'\
+    text = f'Состояние кольца до разворота: \n{stat[0]}'\
            f'\nДействия: '\
            f'\n1)  На {admin_down_host} порт {admin_down_port} - "admin down" '\
            f'в сторону узла {admin_down_to}\n'\
            f'2)  На {up_host} порт {up_port} - "up" '\
            f'в сторону узла {up_to}\n'\
-           f'\nСостояние кольца после разворота: \n {stat[1]} \n'\
+           f'\nСостояние кольца после разворота: \n{stat[1]} \n'\
            f'{info}'
     return subject, text
 

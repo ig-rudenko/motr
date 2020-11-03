@@ -5,7 +5,7 @@ import sys
 
 today = date.today().strftime("%d-%m-%Y")  # Дата на сегодня в формате ДД-ММ-ГГГГ
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])  # Корневая директория
-log_file_name = sys.argv[2] if len(sys.argv) >= 2 else 'unknown'  # Если не запущен с основного файла, то логи unknown
+log_file_name = sys.argv[2] if len(sys.argv) >= 3 else 'unknown'  # Если не запущен с основного файла, то логи unknown
 
 
 def check_logs_file():
