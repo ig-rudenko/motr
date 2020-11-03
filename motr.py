@@ -32,10 +32,10 @@ def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str)
     :return: positive, negative, False
     """
     main_dev_index = current_ring_list.index(main_dev)
-    if current_ring_list[main_dev_index-1] == neighbour_dev:
-        return "positive"
-    elif current_ring_list[main_dev_index+1] == neighbour_dev:
-        return "negative"
+    if current_ring_list[main_dev_index-1] == neighbour_dev:    # Если admin down смотрит в обратную сторону, то...
+        return "positive"                                           # ...разворот положительный
+    elif current_ring_list[main_dev_index+1] == neighbour_dev:  # Если admin down смотрит в прямом направлении, то...
+        return "negative"                                           # ...разворот отрицательный
     else:
         return False
 
@@ -97,9 +97,9 @@ def convert_result_to_str(ring_name: str, current_ring_list: list, old_devices_p
             for dev_name, status in dev_stat[position]:
                 if device == dev_name and not bool(findall('SSW', device)):
                     if status:
-                        stat[position] += ' ' * 10 + f'доступно   {device}\n'
+                        stat[position] += ' ' * 10 + f'✅ {device}\n'
                     else:
-                        stat[position] += ' ' * 10 + f'недоступно {device}\n'
+                        stat[position] += ' ' * 10 + f'❌ {device}\n'
 
     subject = f'{ring_name} Автоматический разворот кольца FTTB'
 
@@ -122,6 +122,13 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
 
     successor_name = ''
 
+    # Делаем отметку, что данное кольцо уже участвует в развороте
+    with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
+        rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
+        rotated_rings[current_ring_name] = 'Deploying'
+    with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
+        yaml.dump(rotated_rings, save_ring, default_flow_style=False)  # Переписываем файл
+
     for device_name, device_status in devices_ping:     # Листаем узлы сети и их доступность по "ping"
 
         lprint('-'*51+'\n'+'-'*51)
@@ -129,14 +136,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
         lprint(f"device_name: {device_name} | device_status: {device_status}")
         if device_status:                                   # Если нашли доступное устройство, то...
             admin_down = search_admin_down(current_ring, current_ring_list, device_name)    # ...ищем admin down
-            if admin_down:                                  # 0 - host name, [1] - side host name, [2] - interface
-
-                # Делаем отметку, что данное кольцо уже участвует в развороте
-                with open(f'{root_dir}/rotated_rings.yaml', 'r') as rings_yaml:  # Чтение файла
-                    rotated_rings = yaml.safe_load(rings_yaml)  # Перевод из yaml в словарь
-                    rotated_rings[current_ring_name] = 'Deploying'
-                with open(f'{root_dir}/rotated_rings.yaml', 'w') as save_ring:
-                    yaml.dump(rotated_rings, save_ring, default_flow_style=False)  # Переписываем файл
+            if admin_down:                                  # 0 - device, [1] - next_device, [2] - interface
 
                 lprint(f"Найден узел сети {admin_down['device']} со статусом порта {admin_down['interface'][0]}: "
                       f"admin down\nДанный порт ведет к {admin_down['next_device'][0]}")
@@ -195,7 +195,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                     status_before += ' ' * 10 + f'недоступно {device}\n'
 
                     if not this_is_the_second_loop:
-                        text = f'Состояние кольца до разворота: \n {status_before}'\
+                        text = f'Состояние кольца до разворота: \n{status_before}'\
                                f'\nБудут выполнены следующие действия:'\
                                f'\nЗакрываем порт {successor_intf} на {successor_name}'\
                                f'\nПоднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}'
@@ -389,7 +389,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                 # Ждем 50 секунд
                                 lprint('Ожидаем 50 сек, не прерывать\n'
                                       '0                       25                       50с')
-                                time_sleep(50)
+                                time_sleep(60)
                                 # Пингуем заново все устройства в кольце с агрегации
                                 new_ping_status = ping_from_device(current_ring_list[0], current_ring)
                                 for _, available in new_ping_status:
@@ -400,7 +400,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                     all_avaliable = 1  # Если после разворота все устройства доступны
                                 if all_avaliable or wait_step == 1:
                                     break
-                                # Если по истечении 50с остались недоступные устройства, то ждем еще 50с
+                                # Если по истечении 60с остались недоступные устройства, то ждем еще 60с
                                 wait_step -= 1
 
                             # После разворота остались недоступными некоторые устройства
@@ -538,7 +538,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                             # Ждем 50 секунд
                                             lprint('Ожидаем 50 сек, не прерывать\n'
                                                    '0                       25                       50с')
-                                            time_sleep(50)
+                                            time_sleep(60)
                                             # Пингуем заново все устройства в кольце с агрегации
                                             new_ping_status = ping_from_device(current_ring_list[0], current_ring)
                                             for _, available in new_ping_status:
@@ -547,7 +547,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                             else:
                                                 lprint("Все устройства в кольце после разворота доступны!\n")
                                                 all_avaliable = 1  # Если после разворота все устройства доступны
-                                            # Если по истечении 50с остались недоступные устройства, то ждем еще 50с
+                                            # Если по истечении 60с остались недоступные устройства, то ждем еще 60с
                                             if all_avaliable or wait_step == 1:
                                                 break
                                             wait_step -= 1
@@ -667,14 +667,17 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                         text=text)
                         tg_bot_send(f'Прерван разворот кольца {current_ring_name}\n\n{text}')
                     delete_ring_from_deploying_list(current_ring_name)
+                    sys.exit()
                     # Выход
 
                 else:
                     lprint("Все узлы недоступны!")
                     delete_ring_from_deploying_list(current_ring_name)
-                break
+                    sys.exit()
     else:                                                       # Если все устройства недоступны по "ping", то...
         lprint("Все узлы сети из данного кольца недоступны!")        # ...конец кольца
+
+    delete_ring_from_deploying_list(current_ring_name)
 
 
 def start(dev: str):
@@ -925,18 +928,20 @@ if __name__ == '__main__':
                     ping_devices(ring)
 
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--hide-mode=enable':
-                    subprocess.Popen(['./motr.py', '-D', sys.argv[i+1]],
+                    subprocess.Popen([f'{root_dir}/motr.py', '-D', sys.argv[i+1]],
                                      close_fds=True,
                                      stdout=subprocess.DEVNULL,
                                      stderr=subprocess.DEVNULL)
+                    time.sleep(30)
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--reset':
                     if len(sys.argv) > i+3 and sys.argv[i+3] == '--hide-mode=enable':
-                        subprocess.Popen(['./reset_ring.py', '-D', sys.argv[i + 1]],
+                        subprocess.Popen([f'{root_dir}/reset_ring.py', '-D', sys.argv[i + 1]],
                                          close_fds=True,
                                          stdout=subprocess.DEVNULL,
                                          stderr=subprocess.DEVNULL)
+                        time.sleep(30)
                     else:
-                        subprocess.run(['./reset_ring.py', '-D', sys.argv[i + 1]])
+                        subprocess.run([f'{root_dir}/reset_ring.py', '-D', sys.argv[i + 1]])
 
                 else:
                     start(sys.argv[i+1])
