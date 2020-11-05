@@ -12,7 +12,8 @@ def tg_bot_send(text: str):
 
     if get_config('tg_bot_notification') == 'enable':
         token = get_config('TG_bot_token')
-        chat_id = get_config('TG_bot_chat_id')
-
-        telegram_bot = MotrAdminBot(token)
-        telegram_bot.send_message(chat_id, text)
+        chat_id_raw = get_config('TG_bot_chat_id')
+        chat_id_list = chat_id_raw.split(',')
+        for chat_id in chat_id_list:
+            telegram_bot = MotrAdminBot(token)
+            telegram_bot.send_message(chat_id.strip(), text)
