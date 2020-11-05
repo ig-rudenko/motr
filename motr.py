@@ -117,7 +117,7 @@ def convert_result_to_str(ring_name: str, current_ring_list: list, old_devices_p
                       f'({current_ring_list[0]})\n'
     elif position_ad == 'down':
         if up_host == current_ring_list[0]:
-            stat[0] = f'\n({current_ring_list[0]})▼\n{stat[1]}({current_ring_list[0]})\n'
+            stat[0] = f'\n({current_ring_list[0]})▼\n{stat[0]}({current_ring_list[0]})\n'
         else:
             stat[0] = f'\n({current_ring_list[0]})\n' \
                       f'{stat[0].replace(up_host, f"{up_host}▼")}' \
@@ -229,22 +229,47 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                     successor_to = double_current_ring_list[current_ring_list.index(successor_name) + i]
                     successor_intf = find_port_by_desc(current_ring, successor_name, successor_to)
 
-                    status_before = ''
-                    for device in current_ring_list:
-                        for dev_name, status in devices_ping:
-                            if device == dev_name and not bool(findall('SSW', device)):
-                                if status:
-                                    status_before += ' ' * 10 + f'доступно   {device}\n'
-                                else:
-                                    status_before += ' ' * 10 + f'недоступно {device}\n'
-
                     if not this_is_the_second_loop:
+                        # ------------------Информация о состоянии кольца для оповещения
+                        status_before = ''
+                        for device in current_ring_list:
+                            for dev_name, status in devices_ping:
+                                if device == dev_name and not bool(findall('SSW', device)):
+                                    if status:
+                                        status_before += ' ' * 5 + f'✅ {device}\n'
+                                    else:
+                                        status_before += ' ' * 5 + f'❌ {device}\n'
+
+                        ad_host = admin_down["device"]
+                        if ad_host == current_ring_list[current_ring_list.index(ad_host) - 1]:
+                            position_ad = 'up'
+                        elif ad_host == current_ring_list[current_ring_list.index(ad_host) + 1]:
+                            position_ad = 'down'
+                        else:
+                            position_ad = None
+                        if position_ad == 'up':
+                            if ad_host == current_ring_list[0]:
+                                status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲\n'
+                            else:
+                                status_before = f'\n({current_ring_list[0]})\n' \
+                                                f'{status_before.replace(ad_host, f"{ad_host}▲")}' \
+                                                f'({current_ring_list[0]})\n'
+                        elif position_ad == 'down':
+                            if ad_host == current_ring_list[0]:
+                                status_before = f'\n({current_ring_list[0]})▼\n{status_before}({current_ring_list[0]})\n'
+                            else:
+                                status_before = f'\n({current_ring_list[0]})\n' \
+                                                f'{status_before.replace(ad_host, f"{ad_host}▼")}' \
+                                                f'({current_ring_list[0]})\n'
                         text = f'Состояние кольца до разворота: \n{status_before}'\
                                f'\nБудут выполнены следующие действия:'\
                                f'\nЗакрываем порт {successor_intf} на {successor_name}'\
                                f'\nПоднимаем порт {admin_down["interface"][0]} на {admin_down["device"]}'
+
+                        # Отправка E-Mail
                         email.send_text(subject=f'Начинаю разворот кольца {current_ring_name}',
                                         text=text)
+                        # Отправка Telegram
                         tg_bot_send(f'Начинаю разворот кольца {current_ring_name}\n\n{text}')
 
                     # -----------------------------Закрываем порт на преемнике------------------------------------------

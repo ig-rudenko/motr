@@ -83,13 +83,17 @@ if __name__ == '__main__':
 
             devices_ping = ping_devices(current_ring)
 
-            # Force reset
+            # --------------------------FORCE RESET
             if len(sys.argv) > 3 and sys.argv[3] == '--force':
                 force_reset = True
                 # Переопределяем значение по умолчанию
                 new_default_status = reset_default_host(current_ring, current_ring_list)
                 if not new_default_status:
                     lrprint('На доступных узлах сети не найден admin down')
+                    email.send_text(subject=f'{current_ring_name} не найден admin down!',
+                                    text=f'При попытке сброса кольца не был найден узел сети со статусом порта admin'
+                                         f'down!')
+                    tg_bot_send(f'🆘\nПри попытке сброса кольца не был найден узел сети со статусом порта admin down!😨')
                     sys.exit()
                 rotated_rings[current_ring_name]["default_host"] = new_default_status['default_host']
                 rotated_rings[current_ring_name]["default_port"] = new_default_status['default_port']
@@ -103,6 +107,7 @@ if __name__ == '__main__':
                 # Когда все узлы сети в кольце доступны, то...
                 lrprint("ALL DEVICES AVAILABLE!\nНачинаем разворот")
 
+            # ------------------Информация о состоянии кольца для оповещения
             status_before = ''
             for device in current_ring_list:
                 for dev_name, status in devices_ping:
@@ -111,6 +116,27 @@ if __name__ == '__main__':
                             status_before += ' ' * 10 + f'доступно   {device}\n'
                         else:
                             status_before += ' ' * 10 + f'недоступно {device}\n'
+            ad_host = rotated_rings[current_ring_name]["admin_down_host"]
+            if ad_host == current_ring_list[current_ring_list.index(ad_host) - 1]:
+                position_ad = 'up'
+            elif ad_host == current_ring_list[current_ring_list.index(ad_host) + 1]:
+                position_ad = 'down'
+            else:
+                position_ad = None
+            if position_ad == 'up':
+                if ad_host == current_ring_list[0]:
+                    status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲\n'
+                else:
+                    status_before = f'\n({current_ring_list[0]})\n' \
+                              f'{status_before.replace(ad_host, f"{ad_host}▲")}' \
+                              f'({current_ring_list[0]})\n'
+            elif position_ad == 'down':
+                if ad_host == current_ring_list[0]:
+                    status_before = f'\n({current_ring_list[0]})▼\n{status_before}({current_ring_list[0]})\n'
+                else:
+                    status_before = f'\n({current_ring_list[0]})\n' \
+                              f'{status_before.replace(ad_host, f"{ad_host}▼")}' \
+                              f'({current_ring_list[0]})\n'
 
             text = f'Состояние кольца до разворота: \n {status_before}'\
                    f'\nВсе устройства доступны, поэтому возвращаем кольцо в прежнее состояние'\
@@ -119,9 +145,12 @@ if __name__ == '__main__':
                    f'на {rotated_rings[current_ring_name]["default_host"]}\n'\
                    f'Поднимаем порт {rotated_rings[current_ring_name]["admin_down_port"]} '\
                    f'на {rotated_rings[current_ring_name]["admin_down_host"]}'
+            # Отправка E-Mail
             email.send_text(subject=f'Восстанавление кольца {current_ring_name}',
                             text=text)
+            # Отправка в Telegram
             tg_bot_send(f'Восстанавление кольца {current_ring_name}\n\n{text}')
+
             # -----------------------------Закрываем порт на default_host------------------------------------------
             try_to_set_port = 2
             while try_to_set_port > 0:

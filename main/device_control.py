@@ -1015,6 +1015,13 @@ def ping_from_device(device: str, ring: dict):
 
             devices_status = [(device, True)]
             lprint(f'Доступно   {device}')
+            try:
+                telnet.sendline(f'ping {ring[device]["ip"]}')
+                telnet.sendcontrol('c')
+                telnet.expect([']', '>', '#'])
+            except pexpect.exceptions.TIMEOUT:
+                telnet.sendcontrol('c')
+                telnet.expect([']', '>', '#'])
             for dev in ring:
                 if device != dev:
                     try:
