@@ -111,15 +111,15 @@ if __name__ == '__main__':
             status_before = ''
             for device in current_ring_list:
                 for dev_name, status in devices_ping:
-                    if device == dev_name and not bool(findall('SSW', device)):
+                    if device == dev_name and device != current_ring_list[0]:
                         if status:
-                            status_before += ' ' * 10 + f'доступно   {device}\n'
+                            status_before += ' ' * 5 + f'✅ {device}\n'
                         else:
-                            status_before += ' ' * 10 + f'недоступно {device}\n'
+                            status_before += ' ' * 5 + f'❌ {device}\n'
             ad_host = rotated_rings[current_ring_name]["admin_down_host"]
-            if ad_host == current_ring_list[current_ring_list.index(ad_host) - 1]:
+            if rotated_rings[current_ring_name]["admin_down_to"] == current_ring_list[current_ring_list.index(ad_host) - 1]:
                 position_ad = 'up'
-            elif ad_host == current_ring_list[current_ring_list.index(ad_host) + 1]:
+            elif rotated_rings[current_ring_name]["admin_down_to"] == current_ring_list[current_ring_list.index(ad_host) + 1]:
                 position_ad = 'down'
             else:
                 position_ad = None
@@ -127,9 +127,8 @@ if __name__ == '__main__':
                 if ad_host == current_ring_list[0]:
                     status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲\n'
                 else:
-                    status_before = f'\n({current_ring_list[0]})\n' \
-                              f'{status_before.replace(ad_host, f"{ad_host}▲")}' \
-                              f'({current_ring_list[0]})\n'
+                    status_before = f'\n({current_ring_list[0]})\n{status_before.replace(ad_host, f"{ad_host}▲")}' \
+                                    f'({current_ring_list[0]})\n'
             elif position_ad == 'down':
                 if ad_host == current_ring_list[0]:
                     status_before = f'\n({current_ring_list[0]})▼\n{status_before}({current_ring_list[0]})\n'

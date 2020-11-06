@@ -75,7 +75,7 @@ def convert_result_to_str(ring_name: str, current_ring_list: list, old_devices_p
                           admin_down_host: str, admin_down_port: str, admin_down_to: str, up_host: str, up_port: str,
                           up_to: str, info: str = '') -> tuple:
     '''
-                        Преобразование переменных в читаемый формат
+                        Преобразование переменных в читаемый формат\n
     :param ring_name:           Имя кольца
     :param current_ring_list:   Кольцо
     :param old_devices_ping:    Состояние узлов сети в кольце до разворота
@@ -234,16 +234,16 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                         status_before = ''
                         for device in current_ring_list:
                             for dev_name, status in devices_ping:
-                                if device == dev_name and not bool(findall('SSW', device)):
+                                if device == dev_name and device != current_ring_list[0]:
                                     if status:
                                         status_before += ' ' * 5 + f'✅ {device}\n'
                                     else:
                                         status_before += ' ' * 5 + f'❌ {device}\n'
 
                         ad_host = admin_down["device"]
-                        if ad_host == current_ring_list[current_ring_list.index(ad_host) - 1]:
+                        if admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) - 1]:
                             position_ad = 'up'
-                        elif ad_host == current_ring_list[current_ring_list.index(ad_host) + 1]:
+                        elif admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) + 1]:
                             position_ad = 'down'
                         else:
                             position_ad = None
