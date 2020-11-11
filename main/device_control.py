@@ -29,7 +29,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 return False
             telnet.sendline(current_ring[checking_device_name]["user"])
             if enable_print:
-                lprint(f"    Login to \033[34m{checking_device_name}\033[0m {current_ring[checking_device_name]['ip']}")
+                lprint(f"    Подключаемся к {checking_device_name} ({current_ring[checking_device_name]['ip']})")
             telnet.expect("[Pp]ass")
             telnet.sendline(current_ring[checking_device_name]["pass"])
             match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
@@ -50,12 +50,12 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 # ZTE
                 if bool(findall(r' ZTE Corporation:', version)):
                     if enable_print:
-                        lprint("    ZTE")
+                        lprint("    Тип оборудования: ZTE")
 
                 # Huawei
                 elif bool(findall(r'Unrecognized command', version)):
                     if enable_print:
-                        lprint("    Huawei")
+                        lprint("    Тип оборудования: Huawei")
                     telnet.sendline("dis int des")
                     output = ''
                     num = ''
@@ -97,7 +97,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 # Cisco
                 elif bool(findall(r'Cisco IOS', version)):
                     if enable_print:
-                        lprint("    Cisco")
+                        lprint("    Тип оборудования: Cisco")
                     if match == 1:
                         telnet.sendline('enable')
                         telnet.expect('[Pp]ass')
@@ -130,7 +130,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 # D-Link
                 elif bool(findall(r'Next possible completions:', version)):
                     if enable_print:
-                        lprint("    D-Link")
+                        lprint("    Тип оборудования: D-Link")
                     telnet.sendline('enable admin')
                     if telnet.expect(["#", "[Pp]ass"]):
                         telnet.sendline('sevaccess')
@@ -149,7 +149,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 # Alcatel, Linksys
                 elif bool(findall(r'SW version', version)):
                     if enable_print:
-                        lprint("    Alcatel or Linksys")
+                        lprint("    Тип оборудования: Alcatel or Linksys")
                     telnet.sendline('show interfaces configuration')
                     port_state = ''
                     while True:
@@ -196,7 +196,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 # Edge-Core
                 elif bool(findall(r'Hardware version', version)):
                     if enable_print:
-                        lprint("    Edge-Core")
+                        lprint("    Тип оборудования: Edge-Core")
                     telnet.sendline('show running-config')
                     output = ''
                     while True:
@@ -223,7 +223,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                 # Zyxel
                 elif bool(findall(r'ZyNOS', version)):
                     if enable_print:
-                        lprint("    Zyxel")
+                        lprint("    Тип оборудования: Zyxel")
 
                 # Eltex
                 elif bool(findall(r'Active-image: ', version)):
