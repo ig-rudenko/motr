@@ -1092,16 +1092,16 @@ def ping_devices(ring: dict):
     :return: Двумерный список: имя узла и его статус "True" - ping успешен, "False" - нет
     """
     status = []
-    lprint("---- def ring_ping_status ----")
+    lprint("---- Пингуем все узлы сети ----")
 
     def ping(ip, device):
         result = subprocess.run(['ping', '-c', '3', '-n', ip], stdout=subprocess.DEVNULL)
         if not result.returncode:  # Проверка на доступность: 0 - доступен, 1 и 2 - недоступен
             status.append((device, True))
-            lprint(f"    \033[32mTrue\033[0m    \033[34m{device}\033[0m")
+            lprint(f"    ✅ {device}")
         else:
             status.append((device, False))
-            lprint(f"    \033[31m\033[5mFalse\033[0m   {device}")
+            lprint(f"    ❌ {device}")
 
     with ThreadPoolExecutor(max_workers=10) as executor:    # Многопоточность
         for device in ring:

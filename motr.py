@@ -973,7 +973,7 @@ if __name__ == '__main__':
                     if not get_ring_:
                         sys.exit()
                     ring, _, ring_name = get_ring_
-                    print(f'    \033[32m{ring_name}\033[0m\n')
+                    print(f'    {ring_name}\n')
                     print(tabulate(interfaces(ring, sys.argv[i+1]),
                                    headers=['\nInterface', 'Admin\nStatus', '\nDescription']))
 
