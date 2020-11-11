@@ -971,6 +971,7 @@ if __name__ == '__main__':
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-int':
                     get_ring_ = get_ring(sys.argv[i + 1], rings_files)
                     if not get_ring_:
+                        print('Данный узел не описан ни в одном файле колец!')
                         sys.exit()
                     ring, _, ring_name = get_ring_
                     print(f'    {ring_name}\n')
@@ -992,18 +993,25 @@ if __name__ == '__main__':
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--show-ping':
                     get_ring_ = get_ring(sys.argv[i + 1], rings_files)
                     if not get_ring_:
+                        print('Данный узел не описан ни в одном файле колец!')
                         sys.exit()
                     ring, ring_list, ring_name = get_ring_
                     ping_devices(ring)
 
+                # HIDE MOD
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--hide-mode=enable':
                     subprocess.Popen([f'{root_dir}/motr.py', '-D', sys.argv[i+1]],
                                      close_fds=True,
                                      stdout=subprocess.DEVNULL,
                                      stderr=subprocess.DEVNULL)
                     time.sleep(30)
+
+                # RESET
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--reset':
                     if len(sys.argv) > i+3 and sys.argv[i+3] == '--hide-mode=enable':
+                        print('Запущена команда на сброс кольца!\nПри успешном выполнении admin down будет установлен '
+                              'на одном из портов агрегации\nДля большей информации смотрите почту, телеграм-бота '
+                              'либо логи')
                         subprocess.Popen([f'{root_dir}/reset_ring.py', '-D', sys.argv[i + 1]],
                                          close_fds=True,
                                          stdout=subprocess.DEVNULL,
@@ -1011,6 +1019,20 @@ if __name__ == '__main__':
                         time.sleep(30)
                     else:
                         subprocess.run([f'{root_dir}/reset_ring.py', '-D', sys.argv[i + 1]])
+
+                # FORCE RESET
+                elif len(sys.argv) > i+2 and sys.argv[i+2] == '--force-reset':
+                    if len(sys.argv) > i+3 and sys.argv[i+3] == '--hide-mode=enable':
+                        print('Запущена команда на сброс кольца!\nПри успешном выполнении admin down будет установлен '
+                              'на одном из портов агрегации\nДля большей информации смотрите почту, телеграм-бота '
+                              'либо логи')
+                        subprocess.Popen([f'{root_dir}/reset_ring.py', '-D', sys.argv[i + 1], '--force'],
+                                         close_fds=True,
+                                         stdout=subprocess.DEVNULL,
+                                         stderr=subprocess.DEVNULL)
+                        time.sleep(30)
+                    else:
+                        subprocess.run([f'{root_dir}/reset_ring.py', '-D', sys.argv[i + 1], '--force'])
 
                 else:
                     start(sys.argv[i+1])
