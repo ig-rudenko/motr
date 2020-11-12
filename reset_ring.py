@@ -21,7 +21,7 @@ successor_name = ''
 
 def reset_default_host(ring: dict, ring_list: list):
 
-    devices_ping = ping_devices(ring)
+    devices_ping = ping_devices(ring, ring_list)
     for device_name, device_status in devices_ping:
         if device_status:
             admin_down = search_admin_down(ring, ring_list, device_name)  # ...ищем admin down
@@ -81,7 +81,7 @@ if __name__ == '__main__':
                     lrprint('Кольцо не находится в списке колец требуемых к развороту "по умолчанию"')
                     sys.exit()      # Выход
 
-            devices_ping = ping_devices(current_ring)
+            devices_ping = ping_devices(current_ring, current_ring_list)
 
             # --------------------------FORCE RESET
             if len(sys.argv) > 3 and sys.argv[3] == '--force':
@@ -97,7 +97,7 @@ if __name__ == '__main__':
                     sys.exit()
                 rotated_rings[current_ring_name]["default_host"] = new_default_status['default_host']
                 rotated_rings[current_ring_name]["default_port"] = new_default_status['default_port']
-                rotated_rings[current_ring_name]["admin_down_to"] = new_default_status['default_to']
+                rotated_rings[current_ring_name]["default_to"] = new_default_status['default_to']
 
             else:
                 for device_name, device_status in devices_ping:
@@ -117,6 +117,7 @@ if __name__ == '__main__':
                         else:
                             status_before += ' ' * 5 + f'❌ {device}\n'
             ad_host = rotated_rings[current_ring_name]["admin_down_host"]
+            ad_intf = rotated_rings[current_ring_name]["admin_down_port"]
             if rotated_rings[current_ring_name]["admin_down_to"] == current_ring_list[current_ring_list.index(ad_host) - 1]:
                 position_ad = 'up'
             elif rotated_rings[current_ring_name]["admin_down_to"] == current_ring_list[current_ring_list.index(ad_host) + 1]:
@@ -125,16 +126,17 @@ if __name__ == '__main__':
                 position_ad = None
             if position_ad == 'up':
                 if ad_host == current_ring_list[0]:
-                    status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲\n'
+                    status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲({ad_intf})\n'
                 else:
-                    status_before = f'\n({current_ring_list[0]})\n{status_before.replace(ad_host, f"{ad_host}▲")}' \
+                    status_before = f'\n({current_ring_list[0]})\n' \
+                                    f'{status_before.replace(ad_host, f"{ad_host}▲({ad_intf})")}' \
                                     f'({current_ring_list[0]})\n'
             elif position_ad == 'down':
                 if ad_host == current_ring_list[0]:
-                    status_before = f'\n({current_ring_list[0]})▼\n{status_before}({current_ring_list[0]})\n'
+                    status_before = f'\n({current_ring_list[0]})▼({ad_intf})\n{status_before}({current_ring_list[0]})\n'
                 else:
                     status_before = f'\n({current_ring_list[0]})\n' \
-                              f'{status_before.replace(ad_host, f"{ad_host}▼")}' \
+                              f'{status_before.replace(ad_host, f"{ad_host}▼({ad_intf})")}' \
                               f'({current_ring_list[0]})\n'
 
             text = f'Состояние кольца до разворота: \n {status_before}'\

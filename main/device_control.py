@@ -1085,7 +1085,7 @@ def ping_from_device(device: str, ring: dict):
             return False
 
 
-def ping_devices(ring: dict):
+def ping_devices(ring: dict, ring_list: list):
     """
     Функция определяет, какие из узлов сети в кольце доступны по "ping" \n
     :param ring: Кольцо
@@ -1098,13 +1098,18 @@ def ping_devices(ring: dict):
         result = subprocess.run(['ping', '-c', '3', '-n', ip], stdout=subprocess.DEVNULL)
         if not result.returncode:  # Проверка на доступность: 0 - доступен, 1 и 2 - недоступен
             status.append((device, True))
-            lprint(f"    ✅ {device}")
         else:
             status.append((device, False))
-            lprint(f"    ❌ {device}")
 
     with ThreadPoolExecutor(max_workers=10) as executor:    # Многопоточность
         for device in ring:
             executor.submit(ping, ring[device]['ip'], device)   # Запускаем фунцию ping и передаем ей переменные
 
+    for device in ring_list:
+        for dev_name, stat in status:
+            if device == dev_name:
+                if stat:
+                    lprint(f"    ✅ {device}")
+                else:
+                    lprint(f"    ❌ {device}")
     return status

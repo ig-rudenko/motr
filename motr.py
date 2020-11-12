@@ -110,17 +110,17 @@ def convert_result_to_str(ring_name: str, current_ring_list: list, old_devices_p
         position_ad = None
     if position_ad == 'up':
         if up_host == current_ring_list[0]:
-            stat[0] = f'\n({current_ring_list[0]})\n{stat[0]}({current_ring_list[0]})▲\n'
+            stat[0] = f'\n({current_ring_list[0]})\n{stat[0]}({current_ring_list[0]})▲({up_port})\n'
         else:
             stat[0] = f'\n({current_ring_list[0]})\n' \
-                      f'{stat[0].replace(up_host, f"{up_host}▲")}' \
+                      f'{stat[0].replace(up_host, f"{up_host}▲({up_port})")}' \
                       f'({current_ring_list[0]})\n'
     elif position_ad == 'down':
         if up_host == current_ring_list[0]:
-            stat[0] = f'\n({current_ring_list[0]})▼\n{stat[0]}({current_ring_list[0]})\n'
+            stat[0] = f'\n({current_ring_list[0]})▼({up_port})\n{stat[0]}({current_ring_list[0]})\n'
         else:
             stat[0] = f'\n({current_ring_list[0]})\n' \
-                      f'{stat[0].replace(up_host, f"{up_host}▼")}' \
+                      f'{stat[0].replace(up_host, f"{up_host}▼({up_port})")}' \
                       f'({current_ring_list[0]})\n'
 
     # После разворота
@@ -132,17 +132,17 @@ def convert_result_to_str(ring_name: str, current_ring_list: list, old_devices_p
         position_ad = None
     if position_ad == 'up':
         if admin_down_host == current_ring_list[0]:
-            stat[1] = f'\n({current_ring_list[0]})\n{stat[1]}({current_ring_list[0]})▲\n'
+            stat[1] = f'\n({current_ring_list[0]})\n{stat[1]}({current_ring_list[0]})▲({admin_down_port})\n'
         else:
             stat[1] = f'\n({current_ring_list[0]})\n' \
-                      f'{stat[1].replace(admin_down_host, f"{admin_down_host}▲")}' \
+                      f'{stat[1].replace(admin_down_host, f"{admin_down_host}▲({admin_down_port})")}' \
                       f'({current_ring_list[0]})\n'
     elif position_ad == 'down':
         if admin_down_host == current_ring_list[0]:
-            stat[1] = f'\n({current_ring_list[0]})▼\n{stat[1]}({current_ring_list[0]})\n'
+            stat[1] = f'\n({current_ring_list[0]})▼({admin_down_port})\n{stat[1]}({current_ring_list[0]})\n'
         else:
             stat[1] = f'\n({current_ring_list[0]})\n' \
-                      f'{stat[1].replace(admin_down_host, f"{admin_down_host}▼")}' \
+                      f'{stat[1].replace(admin_down_host, f"{admin_down_host}▼({admin_down_port})")}' \
                       f'({current_ring_list[0]})\n'
 
     subject = f'{ring_name} Автоматический разворот кольца FTTB'
@@ -241,6 +241,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                         status_before += ' ' * 5 + f'❌ {device}\n'
 
                         ad_host = admin_down["device"]
+                        ad_port = admin_down["interface"]
                         if admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) - 1]:
                             position_ad = 'up'
                         elif admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) + 1]:
@@ -249,17 +250,17 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                             position_ad = None
                         if position_ad == 'up':
                             if ad_host == current_ring_list[0]:
-                                status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲\n'
+                                status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲({ad_port})\n'
                             else:
                                 status_before = f'\n({current_ring_list[0]})\n' \
-                                                f'{status_before.replace(ad_host, f"{ad_host}▲")}' \
+                                                f'{status_before.replace(ad_host, f"{ad_host}▲({ad_port})")}' \
                                                 f'({current_ring_list[0]})\n'
                         elif position_ad == 'down':
                             if ad_host == current_ring_list[0]:
-                                status_before = f'\n({current_ring_list[0]})▼\n{status_before}({current_ring_list[0]})\n'
+                                status_before = f'\n({current_ring_list[0]})▼({ad_port})\n{status_before}({current_ring_list[0]})\n'
                             else:
                                 status_before = f'\n({current_ring_list[0]})\n' \
-                                                f'{status_before.replace(ad_host, f"{ad_host}▼")}' \
+                                                f'{status_before.replace(ad_host, f"{ad_host}▼({ad_port})")}' \
                                                 f'({current_ring_list[0]})\n'
                         text = f'Состояние кольца до разворота: \n{status_before}'\
                                f'\nБудут выполнены следующие действия:'\
@@ -553,7 +554,7 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                                         and 'SAVE' not in operation_port_down2:
                                     try_to_set_port2 -= 1
                                     # Пингуем заново все устройства в кольце
-                                    ping_stat = ping_devices(current_ring)
+                                    ping_stat = ping_devices(current_ring, current_ring_list)
                                     for _, available in ping_stat:
                                         if not available:
                                             break   # Если есть недоступное устройство
@@ -771,7 +772,7 @@ def start(dev: str):
                            f"(смотреть файл \"{root_dir}/rotated_rings.yaml\")")
                     return False
 
-    devices_ping = ping_devices(current_ring)
+    devices_ping = ping_devices(current_ring, current_ring_list)
 
     for _, available in devices_ping:
         if not available:
@@ -862,7 +863,7 @@ def show_all_int(device: str):
         sys.exit()
     ring, ring_list, ring_name = get_ring_
     print(f'    \033[32m{ring_name}\033[0m\n')
-    ping_devices(ring)
+    ping_devices(ring, ring_list)
     result = {x: [] for x in ring_list}
     with ThreadPoolExecutor(max_workers=10) as executor:
         for device in ring_list:
@@ -884,8 +885,8 @@ def check_admin_down(device: str):
     if not get_ring_:
         sys.exit()
     ring, ring_list, ring_name = get_ring_
-    print(f'    \033[32m{ring_name}\033[0m\n')
-    devices_ping = ping_devices(ring)
+    print(f'    Кольцо: {ring_name}\n')
+    devices_ping = ping_devices(ring, ring_list)
     with ThreadPoolExecutor(max_workers=10) as executor:
         output_check = {x: () for x in ring_list}
         for device in ring_list:
@@ -893,12 +894,12 @@ def check_admin_down(device: str):
                 if device == d and s:
                     executor.submit(get_ad, ring, ring_list, device)
     for d in output_check:
-        print(f'\nОборудование: \033[34m{d}\033[0m {ring[d]["ip"]}')
+        print(f'\nОборудование: {d} {ring[d]["ip"]}')
         if output_check[d]:
-            print(f'\033[32mFind admin down!\033[0m Интерфейс: \033[32m{output_check[d]["interface"][0]}\033[0m '
-                  f'ведет к устройству \033[32m{output_check[d]["next_device"][0]}\033[0m')
+            print(f'Find admin down! Интерфейс: {output_check[d]["interface"][0]} '
+                  f'ведет к устройству {output_check[d]["next_device"][0]}')
         else:
-            print('\033[33mNo admin down\033[0m')
+            print('No admin down')
 
 
 if __name__ == '__main__':
@@ -984,7 +985,7 @@ if __name__ == '__main__':
                         sys.exit()
                     ring, ring_list, ring_name = get_ring_
                     print(f'    \033[32m{ring_name}\033[0m\n')
-                    ping_devices(ring)
+                    ping_devices(ring, ring_list)
                     if check_descriptions(ring, ring_list):
                         print('\n\033[32m Проверка пройдена успешно - OK!\033[0m')
                     else:
@@ -996,7 +997,7 @@ if __name__ == '__main__':
                         print('Данный узел не описан ни в одном файле колец!')
                         sys.exit()
                     ring, ring_list, ring_name = get_ring_
-                    ping_devices(ring)
+                    ping_devices(ring, ring_list)
 
                 # HIDE MOD
                 elif len(sys.argv) > i+2 and sys.argv[i+2] == '--hide-mode=enable':
