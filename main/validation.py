@@ -4,6 +4,7 @@ from main import email_notifications as email
 from motr import root_dir  # Импорт глобальной переменной
 from main.logs import lprint
 import os
+from main.tg_bot_notification import tg_bot_send
 
 
 def validation(files: list) -> bool:
@@ -206,9 +207,8 @@ def validation(files: list) -> bool:
     for v in valid:
         if not v or not valid_2:
             email.send_text('Разворот колец невозможен!',
-                            f'Ошибка в структуре: \n'
-                            f'{invalid_files}'
-                            f'\n{text}')
+                            f'Ошибка в структуре:\n{invalid_files}\n{text}')
+            tg_bot_send(f'Разворот колец невозможен!\nОшибка в структуре:\n{invalid_files}\n{text}')
             lprint(f'Ошибка в структуре: \n{invalid_files}\n{text}')
             return False
     return True
