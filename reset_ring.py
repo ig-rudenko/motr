@@ -41,7 +41,13 @@ def reset_default_host(ring: dict, ring_list: list):
     agregation_name = ring_list[0]
     default_interface = find_port_by_desc(ring, agregation_name, ring_list[index_factor])
 
-    return {'default_host': agregation_name, 'default_port': default_interface, 'default_to': ring_list[index_factor]}
+    return {'default_host': agregation_name,
+            'default_port': default_interface,
+            'default_to': ring_list[index_factor],
+            'admin_down_host': admin_down['device'],
+            'admin_down_to': admin_down['admin_down_to'],
+            'admin_down_port': admin_down['admin_down_port']
+            }
 
 
 if __name__ == '__main__':
@@ -81,6 +87,7 @@ if __name__ == '__main__':
                     lrprint('Кольцо не находится в списке колец требуемых к развороту "по умолчанию"')
                     if not len(sys.argv) > 3 or not sys.argv[3] == '--force':
                         sys.exit()      # Выход
+                    rotated_rings[current_ring_name] = {}
 
             devices_ping = ping_devices(current_ring, current_ring_list)
 
@@ -99,6 +106,9 @@ if __name__ == '__main__':
                 rotated_rings[current_ring_name]["default_host"] = new_default_status['default_host']
                 rotated_rings[current_ring_name]["default_port"] = new_default_status['default_port']
                 rotated_rings[current_ring_name]["default_to"] = new_default_status['default_to']
+                rotated_rings[current_ring_name]["admin_down_host"] = new_default_status["admin_down_host"]
+                rotated_rings[current_ring_name]["admin_down_port"] = new_default_status["admin_down_port"]
+                rotated_rings[current_ring_name]["admin_down_to"] = new_default_status["admin_down_to"]
 
             else:
                 for device_name, device_status in devices_ping:
