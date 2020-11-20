@@ -21,6 +21,40 @@ root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 global email_notification
 
 
+def sorted_view_ring(ring_list: list, devices_ping: list, host: str, interface: str, next_host: str):
+
+    status_before = ''
+    for device in ring_list:
+        for dev_name, status in devices_ping:
+            if device == dev_name and device != ring_list[0]:
+                if status:
+                    status_before += ' ' * 5 + f'✅ {device}\n'
+                else:
+                    status_before += ' ' * 5 + f'❌ {device}\n'
+    double_ring_list = ring_list + ring_list
+    if next_host == double_ring_list[ring_list.index(host) - 1]:
+        position_ad = 'up'
+    elif next_host == double_ring_list[ring_list.index(host) + 1]:
+        position_ad = 'down'
+    else:
+        position_ad = None
+    if position_ad == 'up':
+        if host == ring_list[0]:
+            status_before = f'\n({ring_list[0]})\n{status_before}({ring_list[0]})▲({interface})\n'
+        else:
+            status_before = f'\n({ring_list[0]})\n' \
+                            f'{status_before.replace(host, f"{host}▲({interface})")}' \
+                            f'({ring_list[0]})\n'
+    elif position_ad == 'down':
+        if host == ring_list[0]:
+            status_before = f'\n({ring_list[0]})▼({interface})\n{status_before}({ring_list[0]})\n'
+        else:
+            status_before = f'\n({ring_list[0]})\n' \
+                            f'{status_before.replace(host, f"{host}▼({interface})")}' \
+                            f'({ring_list[0]})\n'
+    return status_before
+
+
 def ring_rotate_type(current_ring_list: list, main_dev: str, neighbour_dev: str):
     """
     На основе двух узлов сети определяется тип "поворота" кольца относительно его структуры описанной в файле
@@ -231,37 +265,44 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
 
                     if not this_is_the_second_loop:
                         # ------------------Информация о состоянии кольца для оповещения
-                        status_before = ''
-                        for device in current_ring_list:
-                            for dev_name, status in devices_ping:
-                                if device == dev_name and device != current_ring_list[0]:
-                                    if status:
-                                        status_before += ' ' * 5 + f'✅ {device}\n'
-                                    else:
-                                        status_before += ' ' * 5 + f'❌ {device}\n'
+                        # status_before = ''
+                        # for device in current_ring_list:
+                        #     for dev_name, status in devices_ping:
+                        #         if device == dev_name and device != current_ring_list[0]:
+                        #             if status:
+                        #                 status_before += ' ' * 5 + f'✅ {device}\n'
+                        #             else:
+                        #                 status_before += ' ' * 5 + f'❌ {device}\n'
 
-                        ad_host = admin_down["device"]
-                        ad_port = admin_down["interface"]
-                        if admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) - 1]:
-                            position_ad = 'up'
-                        elif admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) + 1]:
-                            position_ad = 'down'
-                        else:
-                            position_ad = None
-                        if position_ad == 'up':
-                            if ad_host == current_ring_list[0]:
-                                status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲({ad_port})\n'
-                            else:
-                                status_before = f'\n({current_ring_list[0]})\n' \
-                                                f'{status_before.replace(ad_host, f"{ad_host}▲({ad_port})")}' \
-                                                f'({current_ring_list[0]})\n'
-                        elif position_ad == 'down':
-                            if ad_host == current_ring_list[0]:
-                                status_before = f'\n({current_ring_list[0]})▼({ad_port})\n{status_before}({current_ring_list[0]})\n'
-                            else:
-                                status_before = f'\n({current_ring_list[0]})\n' \
-                                                f'{status_before.replace(ad_host, f"{ad_host}▼({ad_port})")}' \
-                                                f'({current_ring_list[0]})\n'
+                        status_before = sorted_view_ring(
+                            ring_list=current_ring_list,
+                            devices_ping=devices_ping,
+                            host=admin_down["device"],
+                            next_host=admin_down["next_device"][0],
+                            interface=admin_down["interface"][0]
+                        )
+                        #
+                        # if admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) - 1]:
+                        #     position_ad = 'up'
+                        # elif admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) + 1]:
+                        #     position_ad = 'down'
+                        # else:
+                        #     position_ad = None
+                        # if position_ad == 'up':
+                        #     if ad_host == current_ring_list[0]:
+                        #         status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲({ad_port})\n'
+                        #     else:
+                        #         status_before = f'\n({current_ring_list[0]})\n' \
+                        #                         f'{status_before.replace(ad_host, f"{ad_host}▲({ad_port})")}' \
+                        #                         f'({current_ring_list[0]})\n'
+                        # elif position_ad == 'down':
+                        #     if ad_host == current_ring_list[0]:
+                        #         status_before = f'\n({current_ring_list[0]})▼({ad_port})\n{status_before}({current_ring_list[0]})\n'
+                        #     else:
+                        #         status_before = f'\n({current_ring_list[0]})\n' \
+                        #                         f'{status_before.replace(ad_host, f"{ad_host}▼({ad_port})")}' \
+                        #                         f'({current_ring_list[0]})\n'
+
                         text = f'Состояние кольца до разворота: \n{status_before}'\
                                f'\nБудут выполнены следующие действия:'\
                                f'\nЗакрываем порт {successor_intf} на {successor_name}'\
