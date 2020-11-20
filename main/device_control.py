@@ -147,7 +147,7 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                     return result
 
                 # Alcatel, Linksys
-                elif bool(findall(r'SW version', version)):
+                elif bool(findall(r'SW version ', version)):
                     if enable_print:
                         lprint("    Тип оборудования: Alcatel or Linksys")
                     telnet.sendline('show interfaces configuration')
@@ -1089,6 +1089,7 @@ def ping_devices(ring: dict, ring_list: list):
     """
     Функция определяет, какие из узлов сети в кольце доступны по "ping" \n
     :param ring: Кольцо
+    :param ring_list: список имен узлов в кольце
     :return: Двумерный список: имя узла и его статус "True" - ping успешен, "False" - нет
     """
     status = []

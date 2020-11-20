@@ -79,7 +79,8 @@ if __name__ == '__main__':
                         break
                 else:
                     lrprint('Кольцо не находится в списке колец требуемых к развороту "по умолчанию"')
-                    sys.exit()      # Выход
+                    if not len(sys.argv) > 3 or not sys.argv[3] == '--force':
+                        sys.exit()      # Выход
 
             devices_ping = ping_devices(current_ring, current_ring_list)
 
