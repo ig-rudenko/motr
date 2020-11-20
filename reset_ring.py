@@ -45,8 +45,8 @@ def reset_default_host(ring: dict, ring_list: list):
             'default_port': default_interface,
             'default_to': ring_list[index_factor],
             'admin_down_host': admin_down['device'],
-            'admin_down_to': admin_down['admin_down_to'],
-            'admin_down_port': admin_down['admin_down_port']
+            'admin_down_to': admin_down['next_device'],
+            'admin_down_port': admin_down['interface'][0]
             }
 
 
@@ -129,9 +129,10 @@ if __name__ == '__main__':
                             status_before += ' ' * 5 + f'❌ {device}\n'
             ad_host = rotated_rings[current_ring_name]["admin_down_host"]
             ad_intf = rotated_rings[current_ring_name]["admin_down_port"]
-            if rotated_rings[current_ring_name]["admin_down_to"] == current_ring_list[current_ring_list.index(ad_host) - 1]:
+            double_current_ring_list = current_ring_list + current_ring_list
+            if rotated_rings[current_ring_name]["admin_down_to"] == double_current_ring_list[current_ring_list.index(ad_host) - 1]:
                 position_ad = 'up'
-            elif rotated_rings[current_ring_name]["admin_down_to"] == current_ring_list[current_ring_list.index(ad_host) + 1]:
+            elif rotated_rings[current_ring_name]["admin_down_to"] == double_current_ring_list[current_ring_list.index(ad_host) + 1]:
                 position_ad = 'down'
             else:
                 position_ad = None
@@ -163,11 +164,18 @@ if __name__ == '__main__':
             # Отправка в Telegram
             tg_bot_send(f'Восстанавление кольца {current_ring_name}\n\n{text}')
 
+            # Делаем отметку, что данное кольцо уже участвует в развороте
+            with open(f'{root_dir}/rotated_rings.yaml', 'r') as rrings_yaml:  # Чтение файла
+                rrotated_rings = yaml.safe_load(rrings_yaml)  # Перевод из yaml в словарь
+                rrotated_rings[current_ring_name] = 'Deploying'
+            with open(f'{root_dir}/rotated_rings.yaml', 'w') as rsave_ring:
+                yaml.dump(rrotated_rings, rsave_ring, default_flow_style=False)  # Переписываем файл
+
             # -----------------------------Закрываем порт на default_host------------------------------------------
             try_to_set_port = 2
             while try_to_set_port > 0:
                 lrprint(f'Закрываем порт {rotated_rings[current_ring_name]["default_port"]} '
-                      f'на {rotated_rings[current_ring_name]["default_host"]}')
+                        f'на {rotated_rings[current_ring_name]["default_host"]}')
                 operation_port_down = set_port_status(current_ring=current_ring,
                                                       device=rotated_rings[current_ring_name]["default_host"],
                                                       interface=rotated_rings[current_ring_name]["default_port"],
