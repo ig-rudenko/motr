@@ -16,6 +16,7 @@ from main.device_control import ping_devices, ping_from_device
 from main.config import get_config, set_default_config
 from main.tg_bot_notification import tg_bot_send    # Оповещения телеграм
 import subprocess
+from ENABLE import global_enable_motr
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 global email_notification
@@ -262,18 +263,13 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
 
                     successor_to = double_current_ring_list[current_ring_list.index(successor_name) + i]
                     successor_intf = find_port_by_desc(current_ring, successor_name, successor_to)
+                    # Если порт преемника смотрит в сторону агрегации, то переопределяем порт и хост за ним,
+                    # чтобы тот смотрел в другую сторону
+                    if 'SSW' in successor_to:
+                        successor_to = double_current_ring_list[current_ring_list.index(successor_name) - i]
+                        successor_intf = find_port_by_desc(current_ring, successor_name, successor_to)
 
                     if not this_is_the_second_loop:
-                        # ------------------Информация о состоянии кольца для оповещения
-                        # status_before = ''
-                        # for device in current_ring_list:
-                        #     for dev_name, status in devices_ping:
-                        #         if device == dev_name and device != current_ring_list[0]:
-                        #             if status:
-                        #                 status_before += ' ' * 5 + f'✅ {device}\n'
-                        #             else:
-                        #                 status_before += ' ' * 5 + f'❌ {device}\n'
-
                         status_before = sorted_view_ring(
                             ring_list=current_ring_list,
                             devices_ping=devices_ping,
@@ -281,27 +277,6 @@ def main(devices_ping: list, current_ring: dict, current_ring_list: list, curren
                             next_host=admin_down["next_device"][0],
                             interface=admin_down["interface"][0]
                         )
-                        #
-                        # if admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) - 1]:
-                        #     position_ad = 'up'
-                        # elif admin_down["next_device"] == current_ring_list[current_ring_list.index(ad_host) + 1]:
-                        #     position_ad = 'down'
-                        # else:
-                        #     position_ad = None
-                        # if position_ad == 'up':
-                        #     if ad_host == current_ring_list[0]:
-                        #         status_before = f'\n({current_ring_list[0]})\n{status_before}({current_ring_list[0]})▲({ad_port})\n'
-                        #     else:
-                        #         status_before = f'\n({current_ring_list[0]})\n' \
-                        #                         f'{status_before.replace(ad_host, f"{ad_host}▲({ad_port})")}' \
-                        #                         f'({current_ring_list[0]})\n'
-                        # elif position_ad == 'down':
-                        #     if ad_host == current_ring_list[0]:
-                        #         status_before = f'\n({current_ring_list[0]})▼({ad_port})\n{status_before}({current_ring_list[0]})\n'
-                        #     else:
-                        #         status_before = f'\n({current_ring_list[0]})\n' \
-                        #                         f'{status_before.replace(ad_host, f"{ad_host}▼({ad_port})")}' \
-                        #                         f'({current_ring_list[0]})\n'
 
                         text = f'Состояние кольца до разворота: \n{status_before}'\
                                f'\nБудут выполнены следующие действия:'\
@@ -944,6 +919,8 @@ def check_admin_down(device: str):
 
 
 if __name__ == '__main__':
+    if not global_enable_motr:
+        sys.exit()
 
     if len(sys.argv) == 1:
         print_help()
