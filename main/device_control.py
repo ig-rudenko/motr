@@ -103,13 +103,13 @@ def interfaces(current_ring: dict, checking_device_name: str, enable_print: bool
                         telnet.expect('[Pp]ass')
                         telnet.sendline('sevaccess')
                     telnet.expect('#')
-                    telnet.sendline("sh int des")
+                    telnet.sendline("show int des")
+                    telnet.expect('show int des')
                     output = ''
                     while True:
                         match = telnet.expect([r'#$', "--More--", pexpect.TIMEOUT])
                         page = str(telnet.before.decode('utf-8')).replace("[42D", '').replace(
                             "        ", '')
-                        # page = re.sub(" +\x08+ +\x08+", "\n", page)
                         output += page.strip()
                         if match == 0:
                             telnet.sendline("exit")
@@ -412,11 +412,6 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             lprint('    Не удалось определить статус порта')
                             telnet.sendline('sh')
                             telnet.expect(']')
-                            telnet.sendline('quit')
-                            telnet.expect(']')
-                            telnet.sendline('quit')
-                            telnet.expect(']')
-                            telnet.sendline('quit')
                             lprint('    QUIT!')
                             return 'cant status'
                         try_to_down -= 1
@@ -454,11 +449,6 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             lprint('    Не удалось определить статус порта')
                             telnet.sendline('sh')
                             telnet.expect(']')
-                            telnet.sendline('quit')
-                            telnet.expect(']')
-                            telnet.sendline('quit')
-                            telnet.expect(']')
-                            telnet.sendline('quit')
                             lprint('    QUIT!')
                             return 'cant status'
                         try_to_up -= 1
@@ -596,22 +586,12 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             telnet.sendline('shutdown')
                             lprint(f'    {device}(config-if)#shutdown')
                             telnet.expect('#$')
-                            telnet.sendline('exit')
-                            telnet.expect('#$')
-                            telnet.sendline('exit')
-                            telnet.expect('#$')
-                            telnet.sendline('exit')
                             lprint('    EXIT')
                             return 'cant status'
                         try_to_up -= 1
                         lprint(f'    Порт не удалось открыть порт, пытаемся заново (осталось {try_to_up} попыток)')
                     else:
                         lprint(f'    Порт не закрыт! Не удалось установить порт в состояние admin down')
-                        telnet.sendline('exit')
-                        telnet.expect('#$')
-                        telnet.sendline('exit')
-                        telnet.expect('#$')
-                        telnet.sendline('exit')
                         lprint('    EXIT')
                         return 'cant set down'
             except Exception as e:
@@ -840,9 +820,6 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             lprint('    Возвращаем порт в прежнее состояние')
                             telnet.sendline('no sh')
                             lprint(f'    {device}(config-if)# no shutdown')
-                            telnet.sendline('exit')
-                            telnet.sendline('exit')
-                            telnet.sendline('exit')
                             lprint('    EXIT!')
                             return 'cant status'
                         # Проходимся по всем интерфейсам
@@ -860,9 +837,6 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                         break  # Если нашли требуемый порт и он admin down
                     else:
                         lprint(f'    Порт не закрыт! Не удалось установить порт в состояние admin down')
-                        telnet.sendline('exit')
-                        telnet.sendline('exit')
-                        telnet.sendline('exit')
                         lprint('    EXIT!')
                         return 'cant set down'
                 # ------------------Alcatel, Linksys - ADMIN UP-----------------------
@@ -892,9 +866,6 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                             lprint('    Возвращаем порт в прежнее состояние')
                             telnet.sendline('sh')
                             lprint(f'    {device}(config-if)# shutdown')
-                            telnet.sendline('exit')
-                            telnet.sendline('exit')
-                            telnet.sendline('exit')
                             lprint('    EXIT!')
                             return 'cant status'
                         # Проходимся по всем интерфейсам
@@ -912,9 +883,6 @@ def set_port_status(current_ring: dict, device: str, interface: str, status: str
                         break  # Если нашли требуемый порт и он admin down
                     else:
                         lprint(f'    Порт не открыт! Не удалось установить порт в состояние admin up')
-                        telnet.sendline('exit')
-                        telnet.sendline('exit')
-                        telnet.sendline('exit')
                         lprint('    EXIT!')
                         return 'cant set up'
             except Exception as e:
@@ -992,40 +960,35 @@ def ping_from_device(device: str, ring: dict):
     with pexpect.spawn(f"telnet {ring[device]['ip']}") as telnet:
         try:
             if telnet.expect(["[Uu]ser", 'Unable to connect']):
-                lprint("    Telnet недоступен!")
+                print("    Telnet недоступен!")
                 return False
             telnet.sendline(ring[device]["user"])
-            lprint(f"    Login to {device}")
+            print(f"    Login to {device}")
             telnet.expect("[Pp]ass")
             telnet.sendline(ring[device]["pass"])
-            lprint(f"    Pass to {device}")
+            print(f"    Pass to {device}")
             match = telnet.expect([']', '>', '#', 'Failed to send authen-req'])
             if match == 3:
-                lprint('    Неверный логин или пароль!')
+                print('    Неверный логин или пароль!')
                 return False
             telnet.sendline('show version')
             version = ''
             while True:
-                m = telnet.expect([']', '-More-', '>', '#'])
+                m = telnet.expect([r']$', '-More-', r'>$', r'#', pexpect.TIMEOUT])
                 version += str(telnet.before.decode('utf-8'))
                 if m == 1:
                     telnet.sendline(' ')
+                if m == 4:
+                    telnet.sendcontrol('C')
                 else:
                     break
-
             devices_status = [(device, True)]
-            lprint(f'Доступно   {device}')
-            try:
-                telnet.sendline(f'ping {ring[device]["ip"]}')
-                telnet.sendcontrol('c')
-                telnet.expect([']', '>', '#'])
-            except pexpect.exceptions.TIMEOUT:
-                telnet.sendcontrol('c')
-                telnet.expect([']', '>', '#'])
+            print(f'Доступно   {device}')
             for dev in ring:
                 if device != dev:
                     try:
                         telnet.sendline(f'ping {ring[dev]["ip"]}')
+                        telnet.expect(f'ping {ring[dev]["ip"]}')
 
                         # Huawei
                         if bool(findall(r'Error: Unrecognized command', version)):
@@ -1046,42 +1009,24 @@ def ping_from_device(device: str, ring: dict):
                         else:
                             telnet.sendline('exit')
                             return False
-
                         if match < 2:
                             telnet.sendcontrol('c')
                             devices_status.append((dev, False))
-                            lprint(f'Недоступно {dev}')
+                            print(f'Недоступно {dev}')
                         elif match == 2:
                             telnet.sendcontrol('c')
                             devices_status.append((dev, True))
-                            lprint(f'Доступно   {dev}')
+                            print(f'Доступно   {dev}')
                         telnet.expect([']', '>', '#'])
                     except pexpect.exceptions.TIMEOUT:
                         devices_status.append((dev, False))
-                        lprint(f'Недоступно {dev} Exception: timeout')
+                        print(f'Недоступно {dev} Exception: timeout')
                         telnet.sendcontrol('c')
                         telnet.expect([']', '>', '#'])
-
-            # Huawei
-            if bool(findall(r'Error: Unrecognized command', version)):
-                telnet.sendline('quit')
-            # Cisco
-            elif bool(findall(r'Cisco IOS', version)):
-                telnet.sendline('exit')
-            # D-Link
-            elif bool(findall(r'Next possible completions:', version)):
-                telnet.sendline('logout')
-            # Alcatel, Linksys
-            elif bool(findall(r'SW version', version)):
-                telnet.sendline('exit')
-            # Eltex
-            elif bool(findall(r'Active-image: ', version)):
-                telnet.sendline('exit')
-
             return devices_status           # Возвращаем список
 
         except pexpect.exceptions.TIMEOUT:
-            lprint("    Время ожидания превышено! (timeout)")
+            print("    Время ожидания превышено! (timeout)")
             return False
 
 
