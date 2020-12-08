@@ -7,14 +7,12 @@ import sys
 import os
 from datetime import datetime
 from main import email_notifications as email
-from re import findall
 from main.logs import lrprint
 from main.config import get_config
 from main.device_control import set_port_status
 from main.device_control import ping_devices, ping_from_device, search_admin_down, find_port_by_desc
 from main.validation import validation
 from main.tg_bot_notification import tg_bot_send
-from ENABLE import global_enable_motr
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 successor_name = ''
@@ -52,7 +50,7 @@ def reset_default_host(ring: dict, ring_list: list):
 
 
 if __name__ == '__main__':
-    if not global_enable_motr:
+    if get_config('motr_status') == 'disable':
         sys.exit()
 
     rings_files = get_config('rings_directory')

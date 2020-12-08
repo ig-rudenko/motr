@@ -20,6 +20,7 @@ def get_config(conf: str = None):
         set_default_config()
     config = configparser.ConfigParser()
     config.read(f'{root_dir}/config.conf')
+    motr_status = 'enable' if config.get("Settings", 'motr_status') == 'enable' else 'disable'
     email_notification = 'enable' if config.get("Settings", 'email_notification') == 'enable' else 'disable'
     tg_bot_notification = 'enable' if config.get("Settings", 'tg_bot_notification') == 'enable' else 'disable'
     rings_files = get_rings()
@@ -36,6 +37,8 @@ def get_config(conf: str = None):
         return config.get("TG_bot", 'token')
     elif conf == 'TG_bot_chat_id':
         return config.get("TG_bot", 'chat_id')
+    elif conf == 'motr_status':
+        return motr_status      # вкл/откл скрипта
     else:
         return None
 
@@ -43,6 +46,7 @@ def get_config(conf: str = None):
 def set_default_config() -> None:
     cfg = configparser.ConfigParser()
     cfg.add_section('Settings')
+    cfg.set("Settings", 'motr_status', 'enable')
     cfg.set("Settings", 'email_notification', 'enable')
     cfg.set("Settings", 'tg_bot_notification', 'enable')
     cfg.set("Settings", 'rings_directory', '~rings/*')

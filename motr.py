@@ -16,7 +16,6 @@ from main.device_control import ping_devices, ping_from_device
 from main.config import get_config, set_default_config
 from main.tg_bot_notification import tg_bot_send    # Оповещения телеграм
 import subprocess
-from ENABLE import global_enable_motr
 
 root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 global email_notification
@@ -835,10 +834,17 @@ Usage:  motr.py [-D DEVICE [OPTIONS]]
         --show-int      Show interfaces of device
         --show-all      Show interfaces of all devices in ring
         --show-ping     Show ping
+        
+    --force-reset
+        --hide-mode=enable
+        
+    --reset
+        --hide-mode=enable
 
 Options:
     --conf          Show config file path and variables
     --stat          Show information about rings
+
     ''')
 
 
@@ -919,7 +925,7 @@ def check_admin_down(device: str):
 
 
 if __name__ == '__main__':
-    if not global_enable_motr:
+    if get_config('motr_status') == 'disable':
         sys.exit()
 
     if len(sys.argv) == 1:
@@ -936,6 +942,19 @@ if __name__ == '__main__':
             print_help()
 
         if key == '--stat':
+            with open(f'{root_dir}/rotated_rings.yaml', 'r') as r_rings_yaml:
+                r_rings = yaml.safe_load(r_rings_yaml)
+            deploying_rings = [x for x in r_rings if r_rings[x] == 'Deploying']
+            r_rings = [x for x in r_rings]
+            r_rings = set(r_rings) - set(deploying_rings)
+            print(f'\n    Разровачиваются в данный момент: {len(deploying_rings)}')
+            for line in deploying_rings:
+                print(line)
+            print(f'\n    Развернутые кольца: {len(r_rings)-1}')
+            for line in r_rings:
+                if line:
+                    print(line)
+            print('\n')
             rings_count = 0
             devices_count = 0
             for file in rings_files:
@@ -946,21 +965,9 @@ if __name__ == '__main__':
                 for r in rings:
                     devrc += len(rings[r])
                 devices_count += devrc
-                print(f'rings: {len(rings)} devices: {devrc:<4} in file: {file}')
-            print(f"\n\033[4mTotal rings count\033[0m:\033[0m \033[32m{rings_count}\033[0m"
-                  f"\n\033[4mTotal devices count\033[0m: \033[32m{devices_count}\033[0m")
-            with open(f'{root_dir}/rotated_rings.yaml', 'r') as r_rings_yaml:
-                r_rings = yaml.safe_load(r_rings_yaml)
-            deploying_rings = [x for x in r_rings if r_rings[x] == 'Deploying']
-            r_rings = [x for x in r_rings]
-            r_rings = set(r_rings) - set(deploying_rings)
-            print(f'\n\033[4mDeploying rings\033[0m: \033[32m{len(deploying_rings)}\033[0m')
-            for line in deploying_rings:
-                print(line)
-            print(f'\n\033[4mRotated rings\033[0m: \033[32m{len(r_rings)-1}\033[0m')
-            for line in r_rings:
-                if line:
-                    print(line)
+                print(f'Колец: {len(rings)} устройств: {devrc:<4} in file: {file}')
+            print(f"\nОбщее количество колец: {rings_count}\n"
+                  f"Общее количество узлов в кольцах: {devices_count}")
 
         if key == '--conf':
             if not os.path.exists(f'{root_dir}/config.conf'):
