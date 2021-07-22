@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from main.config import get_config
+from core.config import get_config
 from sys import argv
 
 

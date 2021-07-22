@@ -1,25 +1,23 @@
-
 import os
 import sys
 import configparser
 from re import findall
 
-root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
 # Работа с файлом конфигурации
 
 
 def get_config(conf: str = None):
-    '''
+    """
     Переопределяет глобальные переменные считывая файл конфигурации "config.conf", если такового не существует,
     то создает с настройками по умолчанию \n
     :return: None
-    '''
+    """
     global email_notification
     global rings_files
-    if not os.path.exists(f'{root_dir}/config.conf'):
+    if not os.path.exists(f'{sys.path[0]}/config.conf'):
         set_default_config()
     config = configparser.ConfigParser()
-    config.read(f'{root_dir}/config.conf')
+    config.read(f'{sys.path[0]}/config.conf')
     motr_status = 'enable' if config.get("Settings", 'motr_status') == 'enable' else 'disable'
     email_notification = 'enable' if config.get("Settings", 'email_notification') == 'enable' else 'disable'
     tg_bot_notification = 'enable' if config.get("Settings", 'tg_bot_notification') == 'enable' else 'disable'
@@ -62,16 +60,16 @@ def set_default_config() -> None:
     cfg.add_section('TG_bot')
     cfg.set("TG_bot", 'token', '')
     cfg.set("TG_bot", 'chat_id', '')
-    with open('../config.conf', 'w') as cfg_file:
+    with open(f'{sys.path[0]}/config.conf', 'w') as cfg_file:
         cfg.write(cfg_file)
 
 
 def return_files(path: str) -> list:
-    '''
+    """
     Возвращает все файлы в папке и подпапках \n
     :param path: Путь до папки
     :return:     Список файлов
-    '''
+    """
     files = os.listdir(path)
     rings_f = []
     for file in files:
@@ -83,12 +81,12 @@ def return_files(path: str) -> list:
 
 
 def get_rings() -> list:
-    '''
+    """
     Из конфигурационного файла достаем переменную "rings_directory" и указываем все найденные файлы \n
     :return: Список файлов с кольцами
-    '''
+    """
     config = configparser.ConfigParser()
-    config.read(f'{root_dir}/config.conf')
+    config.read(f'{sys.path[0]}/config.conf')
 
     rings_directory = config.get("Settings", 'rings_directory').split(',')
     rings_files = []
@@ -97,8 +95,8 @@ def get_rings() -> list:
         elem = elem.strip()
         elem = elem[:-2] if elem.endswith('/*') else elem
         elem = elem[:-1] if elem.endswith('/') else elem
-        elem = os.path.join(root_dir, elem[1:]) if elem.startswith('~') else elem
-        if bool(findall('\w\*$', elem)):
+        elem = os.path.join(sys.path[0], elem[1:]) if elem.startswith('~') else elem
+        if bool(findall(r'\w\*$', elem)):
             root, head = os.path.split(elem)
             sub_files = os.listdir(root)
             for sub_elem in sub_files:
@@ -112,4 +110,3 @@ def get_rings() -> list:
         elif os.path.isdir(elem):
             rings_files += return_files(elem)
     return [i for i in set(rings_files)]
-

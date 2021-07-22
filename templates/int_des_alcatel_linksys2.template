@@ -1,5 +1,4 @@
-Value Port (\S\d+)
 Value DESCRIPTION (\S*$)
 
 Start
-  ^${Port}\s+${DESCRIPTION} -> Record
+  ^(\S\d+)\s+${DESCRIPTION} -> Record

@@ -1,20 +1,17 @@
-
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 import configparser
 import os
 import sys
-from main.config import set_default_config, get_config
-
-root_dir = os.path.join(os.getcwd(), os.path.split(sys.argv[0])[0])
+from core.config import set_default_config, get_config
 
 
 def to_address() -> list:
-    if not os.path.exists(f'{root_dir}/config.conf'):
+    if not os.path.exists(f'{sys.path[0]}/config.conf'):
         set_default_config()
     config = configparser.ConfigParser()
-    config.read(f'{root_dir}/config.conf')
+    config.read(f'{sys.path[0]}/config.conf')
     to_addr = config.get("Email", 'to_address').split(',')
     to_address_list = [x.strip() for x in to_addr if to_addr and '@' in x]
     if not to_address_list:                     # Если нет адресов, то...
@@ -23,29 +20,34 @@ def to_address() -> list:
 
 
 def send_text(subject: str, text: str):
-    if not os.path.exists(f'{root_dir}/config.conf'):
+    if not os.path.exists(f'{sys.path[0]}/config.conf'):
         set_default_config()
 
     if get_config("email_notification") == 'enable':    # Если включены email оповещения
 
-        host = 'mail.sevtelecom.ru'
-        server_login = 'irudenko'
-        server_password = '1qaz2wsx!'
+        host = 'mail.net92.ru'
+        server_login = 'zabbix@sevtelecom.ru'
+        server_password = 'q6@7WBc%8iU$'
 
         to_addresses = to_address()
 
         message = MIMEText(text, 'plain', 'utf-8')
         message['Subject'] = Header(subject, 'utf-8')
-        message['From'] = 'ZABBIX@sevtelecom.ru'
+        message['From'] = 'zabbix@sevtelecom.ru'
         message['To'] = 'irudenko@sevtelecom.ru'
 
-        with smtplib.SMTP(host, 587) as server:
-            server.login(server_login, server_password)
+        try:
+            with smtplib.SMTP(host, 587) as server:
+                server.ehlo(host)
+                server.starttls()
+                server.login(server_login, server_password)
 
-            server.sendmail(from_addr='irudenko@sevtelecom.ru',
-                            to_addrs=to_addresses,
-                            msg=message.as_string())
-            server.quit()
+                server.sendmail(from_addr='zabbix@sevtelecom.ru',
+                                to_addrs=to_addresses,
+                                msg=message.as_string())
+                server.quit()
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':
